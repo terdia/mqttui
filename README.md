@@ -45,7 +45,7 @@ Then access the application at `http://localhost:5000`
 1. Set up your MQTT broker details:
    - If using Docker, you can pass environment variables:
      ```bash
-     docker run -p 5000:5000 -e MQTT_BROKER=your_broker_address -e MQTT_PORT=1883 terdia/mqttui:v1.0.0
+     docker run -p 5000:5000 -e MQTT_BROKER=your_broker_address -e MQTT_PORT=1883 terdia07/mqttui:v1.0.0
      ```
    - If running manually, set environment variables or modify `app.py` directly.
 
