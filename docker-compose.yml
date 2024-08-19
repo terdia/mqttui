@@ -1,0 +1,12 @@
+version: '3'
+services:
+  web:
+    container_name: mqttui
+    build: .
+    ports:
+      - "8088:5000"
+    volumes:
+      - ./:/app
+    command: python app.py
+    env_file:
+      - .env

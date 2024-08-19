@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Web Interface</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <div class="container mx-auto p-4">
+        <h1 id="mqtt-web-interface" class="text-3xl font-bold mb-6">MQTT Web Interface</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 id="last-messages" class="text-xl font-semibold mb-4">Last Messages</h2>
+                <div id="message-list" class="h-64 overflow-y-auto"></div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 id="publish-message" class="text-xl font-semibold mb-4">Publish Message</h2>
+                <form id="publish-form">
+                    <input type="text" id="topic" placeholder="Topic" class="w-full p-2 mb-2 border rounded" required>
+                    <input type="text" id="message" placeholder="Message" class="w-full p-2 mb-2 border rounded" required>
+                    <button type="submit" class="bg-blue-500 text-white p-2 rounded">Publish</button>
+                </form>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 id="message-rate" class="text-xl font-semibold mb-4">Message Rate</h2>
+                <canvas id="messageChart"></canvas>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <h2 id="stats" class="text-xl font-semibold mb-4">Stats</h2>
+                <p>Active Connections: <span id="connection-count" class="font-bold">0</span></p>
+                <p>Total Topics: <span id="topic-count" class="font-bold">0</span></p>
+                <p>Total Messages: <span id="message-count" class="font-bold">0</span></p>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 col-span-2">
+                <h2 id="message-flow" class="text-xl font-semibold mb-4">Message Flow</h2>
+                <div id="network-visualization" style="height: 400px;"></div>
+            </div>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
