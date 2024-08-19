@@ -1,3 +1,5 @@
+__version__ = "1.0.0"
+
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
 import paho.mqtt.client as mqtt
@@ -68,6 +70,10 @@ def get_stats():
 def send_static(path):
     return send_from_directory('static', path)
 
+@app.route('/version')
+def get_version():
+    return jsonify({'version': __version__})
+
 if __name__ == '__main__':
     if mqtt_username and mqtt_password:
         mqtt_client.username_pw_set(mqtt_username, mqtt_password)
@@ -78,4 +84,5 @@ if __name__ == '__main__':
         print(f"Failed to connect to MQTT broker: {str(e)}")
         error_log.append(f"Failed to connect to MQTT broker: {str(e)}")
     
+    print(f"Starting MQTT Web Interface v{__version__}")
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
