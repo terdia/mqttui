@@ -1,54 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MQTT Web Interface</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.css" rel="stylesheet" type="text/css" />
-    <script src="https://cdn.tailwindcss.com"></script>
-
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 </head>
-<body>
+<body class="bg-gray-900 text-white">
     <div class="container mx-auto p-4">
-        <h1 id="mqtt-web-interface" class="text-3xl font-bold mb-6">MQTT Web Interface</h1>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h2 id="last-messages" class="text-xl font-semibold mb-4">Last Messages</h2>
-                <div id="message-list" class="h-64 overflow-y-auto"></div>
+        <h1 class="text-4xl font-bold mb-6">MQTT Web Interface</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2">
+                <div class="bg-gray-800 rounded-lg shadow-md p-6 mb-6">
+                    <h2 class="text-2xl font-semibold mb-4">Message Flow</h2>
+                    <div id="network-visualization" class="h-96"></div>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4">Message Rate</h2>
+                    <canvas id="messageChart"></canvas>
+                </div>
             </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h2 id="publish-message" class="text-xl font-semibold mb-4">Publish Message</h2>
-                <form id="publish-form">
-                    <input type="text" id="topic" placeholder="Topic" class="w-full p-2 mb-2 border rounded" required>
-                    <input type="text" id="message" placeholder="Message" class="w-full p-2 mb-2 border rounded" required>
-                    <button type="submit" class="bg-blue-500 text-white p-2 rounded">Publish</button>
-                </form>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h2 id="message-rate" class="text-xl font-semibold mb-4">Message Rate</h2>
-                <canvas id="messageChart"></canvas>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <h2 id="stats" class="text-xl font-semibold mb-4">Stats</h2>
-                <p>Active Connections: <span id="connection-count" class="font-bold">0</span></p>
-                <p>Total Topics: <span id="topic-count" class="font-bold">0</span></p>
-                <p>Total Messages: <span id="message-count" class="font-bold">0</span></p>
-            </div>
-
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 col-span-2">
-                <h2 id="message-flow" class="text-xl font-semibold mb-4">Message Flow</h2>
-                <div id="network-visualization" style="height: 400px;"></div>
+            
+            <div class="space-y-6">
+                <div class="bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4">Publish Message</h2>
+                    <form id="publish-form" class="space-y-4">
+                        <div>
+                            <label for="topic" class="block text-sm font-medium text-gray-300">Topic</label>
+                            <input type="text" id="topic" name="topic" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white">
+                        </div>
+                        <div>
+                            <label for="message" class="block text-sm font-medium text-gray-300">Message</label>
+                            <textarea id="message" name="message" rows="3" class="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white"></textarea>
+                        </div>
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Publish</button>
+                    </form>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4">Stats</h2>
+                    <p>Active Connections: <span id="connection-count" class="font-bold">0</span></p>
+                    <p>Total Topics: <span id="topic-count" class="font-bold">0</span></p>
+                    <p>Total Messages: <span id="message-count" class="font-bold">0</span></p>
+                </div>
+                
+                <div class="bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-semibold mb-4">Topic Filter</h2>
+                    <select id="topic-filter" class="block w-full mt-1 rounded-md bg-gray-700 border-gray-600 text-white">
+                        <option value="all">All Topics</option>
+                    </select>
+                </div>
             </div>
         </div>
+        
+        <div class="mt-6 bg-gray-800 rounded-lg shadow-md p-6">
+            <h2 class="text-2xl font-semibold mb-4">Last Messages</h2>
+            <div id="message-list" class="h-64 overflow-y-auto space-y-2"></div>
+        </div>
     </div>
+
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>

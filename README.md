@@ -4,6 +4,10 @@
 
 MQTT Web Interface is an open-source web application that provides a real-time visualization of MQTT (Message Queuing Telemetry Transport) message flows. It allows users to monitor MQTT topics, publish messages, and view message statistics through an intuitive web interface.
 
+## Screenshot
+
+![Application Screenshot](static/screenshot.png)
+
 ## Features
 
 - Real-time visualization of MQTT topic hierarchy and message flow

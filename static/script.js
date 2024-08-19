@@ -3,6 +3,7 @@ let messageChart;
 let network;
 let nodes;
 let edges;
+let topicFilter = 'all';
 
 function initChart() {
     const ctx = document.getElementById('messageChart').getContext('2d');
@@ -13,7 +14,7 @@ function initChart() {
             datasets: [{
                 label: 'Messages per second',
                 data: [],
-                borderColor: 'rgb(75, 192, 192)',
+                borderColor: 'rgb(59, 130, 246)',
                 tension: 0.1
             }]
         },
@@ -21,7 +22,22 @@ function initChart() {
             responsive: true,
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        color: 'rgb(209, 213, 219)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: 'rgb(209, 213, 219)'
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'rgb(209, 213, 219)'
+                    }
                 }
             }
         }
@@ -29,14 +45,16 @@ function initChart() {
 }
 
 function updateMessageList(message) {
-    const messageList = document.getElementById('message-list');
-    const messageElement = document.createElement('div');
-    messageElement.className = 'mb-2 p-2 bg-gray-100 dark:bg-gray-700 rounded';
-    messageElement.textContent = `${message.topic}: ${message.payload}`;
-    messageList.insertBefore(messageElement, messageList.firstChild);
+    if (topicFilter === 'all' || message.topic === topicFilter) {
+        const messageList = document.getElementById('message-list');
+        const messageElement = document.createElement('div');
+        messageElement.className = 'mb-2 p-2 bg-gray-700 rounded';
+        messageElement.innerHTML = `<strong class="text-blue-400">${message.topic}:</strong> ${message.payload}`;
+        messageList.insertBefore(messageElement, messageList.firstChild);
 
-    if (messageList.childElementCount > 100) {
-        messageList.removeChild(messageList.lastChild);
+        if (messageList.childElementCount > 100) {
+            messageList.removeChild(messageList.lastChild);
+        }
     }
 }
 
@@ -57,11 +75,6 @@ function updateChart() {
 let messageCount = 0;
 
 function initNetwork() {
-    if (typeof vis === 'undefined') {
-        console.error('Vis.js library not loaded');
-        return;
-    }
-
     nodes = new vis.DataSet([
         { id: 'broker', label: 'MQTT Broker', shape: 'hexagon', color: '#FFA500', size: 30 }
     ]);
@@ -80,8 +93,7 @@ function initNetwork() {
         },
         nodes: {
             font: {
-                size: 12,
-                face: 'Tahoma'
+                color: '#FFFFFF'
             }
         },
         edges: {
@@ -116,7 +128,7 @@ function updateNetwork(message) {
                 label: part, 
                 color: getRandomColor(),
                 shape: 'dot',
-                size: 20 - index * 2  // Gradually decrease size for subtopics
+                size: 20 - index * 2
             });
         }
         if (parentId !== nodeId) {
@@ -144,21 +156,13 @@ function updateNetwork(message) {
     setTimeout(() => {
         nodes.update({ id: finalNodeId, size: finalNode.size });
     }, 1000);
-
-    // Focus on the relevant part of the network
-    network.focus(finalNodeId, {
-        scale: 1,
-        animation: {
-            duration: 1000,
-            easingFunction: 'easeInOutQuad'
-        }
-    });
 }
 
 socket.on('mqtt_message', function(data) {
     updateMessageList(data);
     messageCount++;
     updateNetwork(data);
+    updateTopicFilter(data.topic);
 });
 
 function getRandomColor() {
@@ -196,6 +200,21 @@ function updateStats() {
             document.getElementById('message-count').textContent = data.message_count;
         });
 }
+
+function updateTopicFilter(newTopic) {
+    const topicFilter = document.getElementById('topic-filter');
+    if (!Array.from(topicFilter.options).some(option => option.value === newTopic)) {
+        const option = document.createElement('option');
+        option.value = newTopic;
+        option.textContent = newTopic;
+        topicFilter.appendChild(option);
+    }
+}
+
+document.getElementById('topic-filter').addEventListener('change', function(e) {
+    topicFilter = e.target.value;
+    document.getElementById('message-list').innerHTML = '';
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     initChart();

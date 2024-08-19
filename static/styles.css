@@ -4,19 +4,47 @@
 }
 
 #message-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: #1F2937;
 }
 
 #message-list::-webkit-scrollbar-thumb {
-    background: #888;
+    background: #4B5563;
     border-radius: 4px;
 }
 
 #message-list::-webkit-scrollbar-thumb:hover {
-    background: #555;
+    background: #6B7280;
 }
 
 /* Smooth transitions for dark mode */
 body {
     transition: background-color 0.3s, color 0.3s;
+}
+
+/* Additional styles for better readability */
+#message-list div {
+    background-color: rgba(55, 65, 81, 0.5);
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+}
+
+#network-visualization {
+    border: 1px solid #4B5563;
+    border-radius: 0.25rem;
+}
+
+/* Improve form input styling */
+input[type="text"], textarea, select {
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    background-color: #374151;
+    border: 1px solid #4B5563;
+    color: #F3F4F6;
+}
+
+input[type="text"]:focus, textarea:focus, select:focus {
+    outline: none;
+    border-color: #60A5FA;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
 }
