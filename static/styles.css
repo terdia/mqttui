@@ -48,3 +48,112 @@ input[type="text"]:focus, textarea:focus, select:focus {
     border-color: #60A5FA;
     box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.2);
 }
+
+/* Debug bar styles */
+#debug-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: rgba(0, 0, 0, 0.95);
+    color: #fff;
+    padding: 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    max-height: 60%;
+    overflow-y: auto;
+    z-index: 1000;
+    border-top: 2px solid #3b82f6;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+}
+
+#debug-bar h2 {
+    margin-top: 0;
+    font-size: 18px;
+    color: #3b82f6;
+}
+
+#debug-bar h3 {
+    margin-top: 10px;
+    font-size: 16px;
+    color: #60a5fa;
+    border-bottom: 1px solid #3b82f6;
+    padding-bottom: 5px;
+}
+
+#debug-bar ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+#debug-bar li {
+    margin-bottom: 8px;
+    word-break: break-all;
+}
+
+#debug-bar pre {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 5px;
+    border-radius: 3px;
+    overflow-x: auto;
+}
+
+#debug-bar-toggle {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+    background-color: #3b82f6;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1001;
+    font-weight: bold;
+    transition: background-color 0.3s;
+}
+
+#debug-bar-toggle:hover {
+    background-color: #2563eb;
+}
+
+#debug-bar-toggle.active {
+    background-color: #1e40af;
+}
+
+#debug-bar-close {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.debug-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.debug-panel {
+    background-color: rgba(59, 130, 246, 0.1);
+    border-radius: 4px;
+    padding: 10px;
+    flex: 1 1 calc(33% - 10px);
+    min-width: 250px;
+    margin-bottom: 10px;
+}
+
+.debug-panel h3 {
+    margin-top: 0;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .debug-panel {
+        flex: 1 1 100%;
+    }
+}

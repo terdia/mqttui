@@ -216,9 +216,91 @@ document.getElementById('topic-filter').addEventListener('change', function(e) {
     document.getElementById('message-list').innerHTML = '';
 });
 
+
+
+let debugBar;
+let debugBarToggle;
+
+function initDebugBar() {
+    debugBar = document.createElement('div');
+    debugBar.id = 'debug-bar';
+    debugBar.style.display = 'none';
+    document.body.appendChild(debugBar);
+
+    debugBarToggle = document.createElement('button');
+    debugBarToggle.id = 'debug-bar-toggle';
+    debugBarToggle.innerHTML = '🐞 Debug';
+    debugBarToggle.onclick = toggleDebugBar;
+    document.body.appendChild(debugBarToggle);
+
+    const closeButton = document.createElement('button');
+    closeButton.id = 'debug-bar-close';
+    closeButton.innerHTML = '&times;';
+    closeButton.onclick = closeDebugBar;
+    debugBar.appendChild(closeButton);
+
+    updateDebugBar();
+    setInterval(updateDebugBar, 1000);  // Update every second
+}
+
+function toggleDebugBar() {
+    fetch('/toggle-debug-bar', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            debugBar.style.display = data.enabled ? 'block' : 'none';
+            debugBarToggle.classList.toggle('active', data.enabled);
+        });
+}
+
+function closeDebugBar() {
+    debugBar.style.display = 'none';
+    fetch('/toggle-debug-bar', { method: 'POST' });
+    debugBarToggle.classList.remove('active');
+}
+
+function trackClientPerformance() {
+    const perfData = window.performance.timing;
+    const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
+    const domReadyTime = perfData.domContentLoadedEventEnd - perfData.navigationStart;
+
+    fetch('/record-client-performance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            pageLoadTime,
+            domReadyTime,
+        }),
+    });
+}
+
+function updateDebugBar() {
+    fetch('/debug-bar')
+        .then(response => response.json())
+        .then(data => {
+            let content = '<div class="debug-content">';
+            for (const [panelName, panelData] of Object.entries(data)) {
+                content += `<div class="debug-panel"><h3>${panelName}</h3><ul>`;
+                for (const [key, value] of Object.entries(panelData)) {
+                    let displayValue = value;
+                    if (typeof value === 'object' && value !== null) {
+                        displayValue = '<pre>' + JSON.stringify(value, null, 2) + '</pre>';
+                    }
+                    content += `<li><strong>${key}:</strong> ${displayValue}</li>`;
+                }
+                content += '</ul></div>';
+            }
+            content += '</div>';
+            debugBar.innerHTML = content;
+            debugBar.appendChild(document.getElementById('debug-bar-close'));
+        });
+}
 document.addEventListener('DOMContentLoaded', function() {
     initChart();
     initNetwork();
     setInterval(updateChart, 1000);
     setInterval(updateStats, 5000);
+    initDebugBar();
+    trackClientPerformance();
 });

@@ -8,6 +8,8 @@ MQTT Web Interface is an open-source web application that provides a real-time v
 
 ![Application Screenshot](static/screenshot.png)
 
+![Debug Screenshot](static/screenshot_1.png)
+
 ## Features
 
 - Real-time visualization of MQTT topic hierarchy and message flow
@@ -15,6 +17,7 @@ MQTT Web Interface is an open-source web application that provides a real-time v
 - Display of message statistics (connection count, topic count, message count)
 - Interactive network graph showing topic relationships
 - Dockerized for easy deployment
+- Debug Bar
 
 ## Installation
 

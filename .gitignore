@@ -1,1 +1,7 @@
 .env
+__pycache__
+
+static/mqttui-logo-svg.svg
+static/mqttui-logo.png
+
+.DS_Store

@@ -2,3 +2,4 @@ Flask==2.0.1
 Flask-SocketIO==5.1.1
 paho-mqtt==1.5.1
 Werkzeug==2.0.1
+psutil==5.9.0
