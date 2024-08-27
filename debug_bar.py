@@ -57,6 +57,13 @@ class DebugBar:
     def disable(self):
         self.enabled = False
 
+    def remove(self, panel_name, key):
+        with self.lock:
+            if panel_name in self.panels:
+                panel = self.panels[panel_name]
+                if key in panel.data:
+                    del panel.data[key]
+
 debug_bar = DebugBar()
 
 # Initialize default panels

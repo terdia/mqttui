@@ -1,0 +1,86 @@
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+MQTT Connection attempt - Result: Connected
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connected to MQTT broker at fossilbird534.cloud.shiftr.io:1883. Total connections: 1
+WebSocket connected. Total active: 1
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+WebSocket connected. Total active: 1
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+MQTT Connection attempt - Result: Failed: Connection refused - not authorised
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connection failed: Connection refused - not authorised
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+Disconnected from MQTT broker: Unexpected disconnect: Connection refused - not authorised
+Attempting to reconnect...
+Using MQTT v3.1.1
+MQTT Setup - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Version: 3
+MQTT credentials set
+Attempting to connect to MQTT broker at fossilbird534.cloud.shiftr.io:1883
+MQTT Connection attempt - Result: Connected
+MQTT Connection details - Broker: fossilbird534.cloud.shiftr.io, Port: 1883, Username: Set, Password: Set, Protocol: MQTT v3
+Connected to MQTT broker at fossilbird534.cloud.shiftr.io:1883. Total connections: 1
+WebSocket connected. Total active: 1

@@ -17,7 +17,8 @@ MQTT Web Interface is an open-source web application that provides a real-time v
 - Display of message statistics (connection count, topic count, message count)
 - Interactive network graph showing topic relationships
 - Dockerized for easy deployment
-- Debug Bar
+- Debug Bar for enhanced developer insights
+- Flexible configuration for both development and production environments
 
 ## Installation
 
@@ -75,10 +76,31 @@ Then access the application at `http://localhost:5000`
 
 The following environment variables can be used to configure the application:
 
+- `DEBUG`: Set to `True` for development mode, `False` for production (default: `False`)
+- `PORT`: The port on which the application will run (default: `5000`)
 - `MQTT_BROKER`: The address of your MQTT broker (default: 'localhost')
 - `MQTT_PORT`: The port of your MQTT broker (default: 1883)
 - `MQTT_USERNAME`: The username for authenticated connection (optional)
 - `MQTT_PASSWORD`: The password for authenticated connection (optional)
+- `MQTT_KEEPALIVE`: Keep-alive time for MQTT connection (default: 60)
+- `MQTT_VERSION`: MQTT protocol version to use (default: '3.1.1')
+
+## Development Mode
+
+To run the application in development mode:
+
+1. Set `DEBUG=True` in your `.env` file or export it as an environment variable.
+2. Run the application using Python or Docker as described above.
+
+In development mode, the application uses Flask's built-in development server with debug features and the Debug Bar enabled.
+
+## Production Deployment
+
+For production deployment:
+
+1. Ensure `DEBUG=False` in your environment.
+2. Use the Docker setup for the most straightforward deployment.
+3. The application will use Gunicorn with eventlet workers for better performance and concurrency.
 
 ## Contributing
 

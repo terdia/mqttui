@@ -7,6 +7,5 @@ services:
       - "8088:5000"
     volumes:
       - ./:/app
-    command: python app.py
     env_file:
       - .env
