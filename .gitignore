@@ -1,9 +1,23 @@
+# Environment variables
 .env
+
+# Python
 __pycache__
+*.pyc
+*.pyo
 
-static/mqttui-logo-svg.svg
-static/mqttui-logo.png
+# Database files  
+data/
+*.db
+*.sqlite
+*.sqlite3
 
+# Logs
+*.log
+
+# macOS
 .DS_Store
 
-mqttui.log
+# Static assets (if needed)
+static/mqttui-logo-svg.svg
+static/mqttui-logo.png

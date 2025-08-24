@@ -3,7 +3,7 @@ __version__ = "1.3.0"
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import paho.mqtt.client as mqtt
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from debug_bar import debug_bar, debug_bar_middleware
 import logging
@@ -11,6 +11,7 @@ import time
 from dotenv import load_dotenv
 from logging.handlers import RotatingFileHandler
 from werkzeug.serving import run_simple
+from database import MessageDatabase
 
 # Load environment variables
 load_dotenv()
@@ -27,6 +28,12 @@ MQTT_KEEPALIVE = int(os.getenv('MQTT_KEEPALIVE', 60))
 MQTT_VERSION = os.getenv('MQTT_VERSION', '3.1.1')
 # Support for topic filtering (issue #6)
 MQTT_TOPICS = os.getenv('MQTT_TOPICS', '#')  # Comma-separated list of topics to subscribe to
+
+# Database configuration for message persistence
+DB_ENABLED = os.getenv('DB_ENABLED', 'True').lower() in ('true', '1', 't')
+DB_PATH = os.getenv('DB_PATH', 'mqtt_messages.db')
+DB_MAX_MESSAGES = int(os.getenv('DB_MAX_MESSAGES', 10000))
+DB_CLEANUP_DAYS = int(os.getenv('DB_CLEANUP_DAYS', 30))
 
 # Set up logging with LOG_LEVEL environment variable support (fixes issue #9)
 LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG' if DEBUG else 'INFO').upper()
@@ -52,6 +59,16 @@ if not DEBUG:
 app = Flask(__name__, static_url_path='/static')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key')
 socketio = SocketIO(app, async_mode='threading')
+
+# Initialize database for message persistence
+db = None
+if DB_ENABLED:
+    try:
+        db = MessageDatabase(DB_PATH, DB_MAX_MESSAGES)
+        logging.info(f"Database initialized: {DB_PATH}")
+    except Exception as e:
+        logging.error(f"Failed to initialize database: {e}")
+        db = None
 
 MQTT_RC_CODES = {
     0: "Connection successful",
@@ -177,15 +194,33 @@ def on_message(client, userdata, msg):
     except UnicodeDecodeError:
         payload = msg.payload.hex()
 
+    timestamp = datetime.now()
     message = {
         'topic': msg.topic,
         'payload': payload,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': timestamp.isoformat()
     }
+    
+    # Store in memory for backward compatibility
     messages.append(message)
     topics.add(msg.topic)
     if len(messages) > 100:
         messages.pop(0)
+    
+    # Store in database if enabled
+    if db:
+        try:
+            db.store_message(
+                topic=msg.topic,
+                payload=payload,
+                timestamp=timestamp,
+                qos=msg.qos,
+                retain=msg.retain
+            )
+        except Exception as e:
+            logging.error(f"Failed to store message in database: {e}")
+    
+    # Emit to connected clients
     socketio.emit('mqtt_message', message)
     debug_bar.record('mqtt', 'last_message', message)
     logging.debug(f"MQTT message received: {message}")
@@ -193,6 +228,107 @@ def on_message(client, userdata, msg):
 mqtt_client.on_connect = on_connect
 mqtt_client.on_message = on_message
 mqtt_client.on_disconnect = on_disconnect
+
+# API endpoints for message history
+@app.route('/api/messages')
+def get_message_history():
+    """Get paginated message history with optional filtering"""
+    try:
+        # Get query parameters
+        limit = min(int(request.args.get('limit', 100)), 1000)  # Max 1000 messages
+        offset = int(request.args.get('offset', 0))
+        topic_filter = request.args.get('topic')
+        hours = request.args.get('hours')  # Messages from last N hours
+        
+        since = None
+        if hours:
+            since = datetime.now() - timedelta(hours=int(hours))
+        
+        if db:
+            # Get from database
+            messages_list = db.get_messages(
+                limit=limit,
+                offset=offset, 
+                topic_filter=topic_filter,
+                since=since
+            )
+            total_count = db.get_message_count(topic_filter=topic_filter, since=since)
+        else:
+            # Fallback to in-memory messages
+            messages_list = list(reversed(messages))  # Most recent first
+            if topic_filter:
+                messages_list = [m for m in messages_list if m['topic'] == topic_filter]
+            
+            total_count = len(messages_list)
+            messages_list = messages_list[offset:offset+limit]
+        
+        return jsonify({
+            'messages': messages_list,
+            'total': total_count,
+            'limit': limit,
+            'offset': offset,
+            'has_more': offset + len(messages_list) < total_count
+        })
+        
+    except Exception as e:
+        logging.error(f"Error getting message history: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/topics')
+def get_topic_list():
+    """Get list of all topics with statistics"""
+    try:
+        if db:
+            topics_list = db.get_topics()
+        else:
+            # Fallback to in-memory topics
+            topics_list = [{'topic': topic} for topic in sorted(topics)]
+        
+        return jsonify({'topics': topics_list})
+        
+    except Exception as e:
+        logging.error(f"Error getting topics: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/database/stats')
+def get_database_stats():
+    """Get database size and statistics"""
+    try:
+        if db:
+            stats = db.get_database_size()
+            stats['enabled'] = True
+        else:
+            stats = {
+                'enabled': False,
+                'message_count': len(messages),
+                'topic_count': len(topics)
+            }
+        
+        return jsonify(stats)
+        
+    except Exception as e:
+        logging.error(f"Error getting database stats: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/database/cleanup', methods=['POST'])
+def cleanup_database():
+    """Clean up old database records"""
+    try:
+        if not db:
+            return jsonify({'error': 'Database not enabled'}), 400
+            
+        days = int(request.json.get('days', DB_CLEANUP_DAYS))
+        deleted = db.cleanup_old_data(days)
+        
+        return jsonify({
+            'success': True,
+            'deleted_messages': deleted,
+            'days': days
+        })
+        
+    except Exception as e:
+        logging.error(f"Error cleaning database: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/')
 def index():

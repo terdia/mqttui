@@ -13,8 +13,6 @@ services:
     build: .
     ports:
       - "8088:5000"
-    volumes:
-      - ./:/app
     environment:
       - DEBUG=False
       - HOST=0.0.0.0
@@ -28,5 +26,11 @@ services:
       - SECRET_KEY=your-secret-key
       - LOG_LEVEL=INFO
       - MQTT_TOPICS=#
+      - DB_ENABLED=True
+      - DB_PATH=/app/data/mqtt_messages.db
+      - DB_MAX_MESSAGES=10000
+      - DB_CLEANUP_DAYS=30
+    volumes:
+      - ./:/app
     depends_on:
       - mosquitto
