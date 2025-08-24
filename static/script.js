@@ -84,17 +84,29 @@ function initNetwork() {
     const data = { nodes, edges };
     const options = {
         physics: {
-            stabilization: false,
+            enabled: true,
+            stabilization: {
+                enabled: true,
+                iterations: 100,
+                updateInterval: 25
+            },
             barnesHut: {
-                gravitationalConstant: -2000,
-                springLength: 150,
+                gravitationalConstant: -8000,
+                centralGravity: 0.3,
+                springLength: 200,
                 springConstant: 0.04,
+                damping: 0.09,
+                avoidOverlap: 0.1
             }
         },
         nodes: {
             font: {
-                color: '#FFFFFF'
-            }
+                color: '#FFFFFF',
+                size: 14
+            },
+            borderWidth: 2,
+            shadow: true,
+            margin: 10
         },
         edges: {
             width: 2,
@@ -105,10 +117,70 @@ function initNetwork() {
             arrows: {
                 to: { enabled: true, scaleFactor: 0.5 }
             }
+        },
+        interaction: {
+            dragNodes: true,
+            dragView: true,
+            zoomView: true
         }
     };
 
     network = new vis.Network(container, data, options);
+    
+    // Add node pinning functionality
+    let pinnedNodes = new Set();
+    
+    // Double-click to pin/unpin nodes
+    network.on('doubleClick', function(params) {
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            if (pinnedNodes.has(nodeId)) {
+                // Unpin node
+                pinnedNodes.delete(nodeId);
+                nodes.update({
+                    id: nodeId,
+                    fixed: false,
+                    color: nodes.get(nodeId).color || '#97C2FC'
+                });
+            } else {
+                // Pin node
+                pinnedNodes.add(nodeId);
+                nodes.update({
+                    id: nodeId,
+                    fixed: true,
+                    color: '#FF6B6B'  // Red color to indicate pinned
+                });
+            }
+        }
+    });
+    
+    // Right-click context menu for pinning (optional)
+    network.on('oncontext', function(params) {
+        params.event.preventDefault();
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            const isPinned = pinnedNodes.has(nodeId);
+            const action = isPinned ? 'Unpin' : 'Pin';
+            
+            if (confirm(`${action} node "${nodes.get(nodeId).label}"?`)) {
+                if (isPinned) {
+                    pinnedNodes.delete(nodeId);
+                    nodes.update({
+                        id: nodeId,
+                        fixed: false,
+                        color: nodes.get(nodeId).color || '#97C2FC'
+                    });
+                } else {
+                    pinnedNodes.add(nodeId);
+                    nodes.update({
+                        id: nodeId,
+                        fixed: true,
+                        color: '#FF6B6B'
+                    });
+                }
+            }
+        }
+    });
 }
 
 function updateNetwork(message) {
@@ -211,10 +283,296 @@ function updateTopicFilter(newTopic) {
     }
 }
 
+function loadTopicsFromAPI() {
+    fetch('/api/topics')
+        .then(response => response.json())
+        .then(data => {
+            const topicFilter = document.getElementById('topic-filter');
+            
+            // Clear existing options except "All Topics"
+            const allTopicsOption = topicFilter.querySelector('option[value="all"]');
+            topicFilter.innerHTML = '';
+            if (allTopicsOption) {
+                topicFilter.appendChild(allTopicsOption);
+            } else {
+                // Create "All Topics" option if it doesn't exist
+                const option = document.createElement('option');
+                option.value = 'all';
+                option.textContent = 'All Topics';
+                topicFilter.appendChild(option);
+            }
+            
+            // Add topics from API (sorted by most recent)
+            data.topics.forEach(topic => {
+                const option = document.createElement('option');
+                option.value = topic.topic;
+                option.textContent = `${topic.topic} (${topic.message_count})`;
+                topicFilter.appendChild(option);
+            });
+            
+            console.log(`Loaded ${data.topics.length} topics from API`);
+        })
+        .catch(error => {
+            console.error('Error loading topics:', error);
+        });
+}
+
 document.getElementById('topic-filter').addEventListener('change', function(e) {
     topicFilter = e.target.value;
-    document.getElementById('message-list').innerHTML = '';
+    loadFilteredMessages();
 });
+
+function loadFilteredMessages(customFilters = {}) {
+    const messageList = document.getElementById('message-list');
+    messageList.innerHTML = '<div class="loading text-center p-4">Loading messages...</div>';
+    
+    // Build API query parameters
+    let queryParams = new URLSearchParams();
+    queryParams.append('limit', '50'); // Show last 50 messages
+    
+    // Add topic filter
+    if (topicFilter && topicFilter !== 'all') {
+        queryParams.append('topic', topicFilter);
+    }
+    
+    // Add custom filters
+    Object.entries(customFilters).forEach(([key, value]) => {
+        if (value) queryParams.append(key, value);
+    });
+    
+    fetch(`/api/messages?${queryParams.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+            messageList.innerHTML = '';
+            
+            if (data.messages.length === 0) {
+                messageList.innerHTML = '<div class="no-messages text-center p-4 text-gray-400">No messages found for current filter</div>';
+                return;
+            }
+            
+            // Display filtered messages
+            data.messages.forEach(message => {
+                const messageElement = document.createElement('div');
+                messageElement.className = 'message-item bg-gray-700 p-3 rounded mb-2 hover:bg-gray-600 transition-colors';
+                
+                const timestamp = new Date(message.timestamp).toLocaleTimeString();
+                const payload = message.payload.length > 200 ? 
+                    message.payload.substring(0, 200) + '...' : message.payload;
+                
+                // Pretty print JSON if possible
+                let formattedPayload = payload;
+                try {
+                    const parsed = JSON.parse(payload);
+                    formattedPayload = JSON.stringify(parsed, null, 2);
+                } catch (e) {
+                    // Keep original payload if not JSON
+                }
+                
+                messageElement.innerHTML = `
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="topic text-blue-400 font-medium">${message.topic}</span>
+                        <span class="timestamp text-gray-400 text-sm">${timestamp}</span>
+                    </div>
+                    <div class="message-payload text-gray-200 text-sm whitespace-pre-wrap">${formattedPayload}</div>
+                `;
+                
+                messageList.appendChild(messageElement);
+            });
+            
+            // Update filter status
+            const statusElement = messageList.parentElement.querySelector('.filter-status');
+            if (statusElement) statusElement.remove();
+            
+            const status = document.createElement('div');
+            status.className = 'filter-status text-sm text-gray-400 mb-3 flex justify-between items-center';
+            status.innerHTML = `
+                <span>Showing ${data.messages.length} of ${data.total} messages</span>
+                ${Object.keys(customFilters).length > 0 || (topicFilter && topicFilter !== 'all') ? 
+                    '<span class="text-yellow-400">🔍 Filtered</span>' : ''}
+            `;
+            messageList.parentElement.insertBefore(status, messageList);
+            
+        })
+        .catch(error => {
+            console.error('Error loading messages:', error);
+            messageList.innerHTML = '<div class="error text-center p-4 text-red-400">Error loading messages</div>';
+        });
+}
+
+function setupAdvancedSearchHandlers() {
+    // Apply Filters Button
+    document.getElementById('apply-filters-btn').addEventListener('click', function() {
+        const filters = {
+            content: document.getElementById('content-search').value,
+            regex_topic: document.getElementById('regex-topic').value,
+            json_path: document.getElementById('json-path').value,
+            json_value: document.getElementById('json-value').value,
+            hours: document.getElementById('time-filter').value
+        };
+        
+        // Remove empty filters
+        Object.keys(filters).forEach(key => {
+            if (!filters[key]) delete filters[key];
+        });
+        
+        loadFilteredMessages(filters);
+    });
+    
+    // Clear Filters Button
+    document.getElementById('clear-filters-btn').addEventListener('click', function() {
+        document.getElementById('topic-filter').value = 'all';
+        document.getElementById('content-search').value = '';
+        document.getElementById('regex-topic').value = '';
+        document.getElementById('json-path').value = '';
+        document.getElementById('json-value').value = '';
+        document.getElementById('time-filter').value = '';
+        topicFilter = 'all';
+        loadFilteredMessages();
+    });
+    
+    // Load Filter Presets
+    loadFilterPresets();
+    
+    // Load Preset Button
+    document.getElementById('load-preset-btn').addEventListener('click', function() {
+        const presetName = document.getElementById('preset-select').value;
+        if (!presetName) {
+            alert('Please select a preset to load');
+            return;
+        }
+        
+        fetch(`/api/filter-presets/${encodeURIComponent(presetName)}/use`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Apply filters to UI
+                const filters = data.filters;
+                document.getElementById('content-search').value = filters.content || '';
+                document.getElementById('regex-topic').value = filters.regex_topic || '';
+                document.getElementById('json-path').value = filters.json_path || '';
+                document.getElementById('json-value').value = filters.json_value || '';
+                document.getElementById('time-filter').value = filters.hours || '';
+                
+                if (filters.topic) {
+                    document.getElementById('topic-filter').value = filters.topic;
+                    topicFilter = filters.topic;
+                }
+                
+                // Apply the loaded filters
+                loadFilteredMessages(filters);
+            } else {
+                alert('Error loading preset: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading preset:', error);
+            alert('Error loading preset');
+        });
+    });
+    
+    // Save Preset Button
+    document.getElementById('save-preset-btn').addEventListener('click', function() {
+        const name = prompt('Enter a name for this filter preset:');
+        if (!name) return;
+        
+        const description = prompt('Enter a description (optional):') || '';
+        
+        const filters = {
+            content: document.getElementById('content-search').value,
+            regex_topic: document.getElementById('regex-topic').value,
+            json_path: document.getElementById('json-path').value,
+            json_value: document.getElementById('json-value').value,
+            hours: document.getElementById('time-filter').value
+        };
+        
+        if (topicFilter && topicFilter !== 'all') {
+            filters.topic = topicFilter;
+        }
+        
+        // Remove empty filters
+        Object.keys(filters).forEach(key => {
+            if (!filters[key]) delete filters[key];
+        });
+        
+        if (Object.keys(filters).length === 0) {
+            alert('No filters to save');
+            return;
+        }
+        
+        fetch('/api/filter-presets', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                description: description,
+                filters: filters
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Filter preset saved successfully!');
+                loadFilterPresets(); // Refresh preset list
+            } else {
+                alert('Error saving preset: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error saving preset:', error);
+            alert('Error saving preset');
+        });
+    });
+    
+    // Fullscreen and reset buttons for network
+    document.getElementById('fullscreen-btn').addEventListener('click', function() {
+        const networkDiv = document.getElementById('network-visualization');
+        if (networkDiv.requestFullscreen) {
+            networkDiv.requestFullscreen();
+        } else if (networkDiv.webkitRequestFullscreen) {
+            networkDiv.webkitRequestFullscreen();
+        } else if (networkDiv.msRequestFullscreen) {
+            networkDiv.msRequestFullscreen();
+        }
+    });
+    
+    document.getElementById('reset-nodes-btn').addEventListener('click', function() {
+        if (network) {
+            network.fit();
+            // Reset node positions by recreating the network
+            const data = {
+                nodes: nodes,
+                edges: edges
+            };
+            network.setData(data);
+        }
+    });
+}
+
+function loadFilterPresets() {
+    fetch('/api/filter-presets')
+        .then(response => response.json())
+        .then(data => {
+            const presetSelect = document.getElementById('preset-select');
+            
+            // Clear existing options except first
+            presetSelect.innerHTML = '<option value="">Select a preset...</option>';
+            
+            // Add presets
+            data.presets.forEach(preset => {
+                const option = document.createElement('option');
+                option.value = preset.name;
+                option.textContent = `${preset.name}${preset.description ? ' - ' + preset.description : ''}`;
+                presetSelect.appendChild(option);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading presets:', error);
+        });
+}
 
 
 
@@ -296,6 +654,19 @@ function updateDebugBar() {
             debugBar.appendChild(document.getElementById('debug-bar-close'));
         });
 }
+function toggleAdvancedSearch() {
+    const content = document.getElementById('advanced-search-content');
+    const icon = document.getElementById('search-toggle-icon');
+    
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.textContent = '▼';
+    } else {
+        content.classList.add('hidden');
+        icon.textContent = '▶';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     initChart();
     initNetwork();
@@ -303,4 +674,15 @@ document.addEventListener('DOMContentLoaded', function() {
     setInterval(updateStats, 5000);
     initDebugBar();
     trackClientPerformance();
+    
+    // Load existing topics from API
+    loadTopicsFromAPI();
+    // Refresh topics every 30 seconds
+    setInterval(loadTopicsFromAPI, 30000);
+    
+    // Load initial messages
+    loadFilteredMessages();
+    
+    // Setup advanced search UI
+    setupAdvancedSearchHandlers();
 });

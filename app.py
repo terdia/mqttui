@@ -232,32 +232,47 @@ mqtt_client.on_disconnect = on_disconnect
 # API endpoints for message history
 @app.route('/api/messages')
 def get_message_history():
-    """Get paginated message history with optional filtering"""
+    """Get paginated message history with enhanced filtering"""
     try:
         # Get query parameters
         limit = min(int(request.args.get('limit', 100)), 1000)  # Max 1000 messages
         offset = int(request.args.get('offset', 0))
+        
+        # Basic filters
         topic_filter = request.args.get('topic')
         hours = request.args.get('hours')  # Messages from last N hours
+        
+        # Enhanced filters
+        content_search = request.args.get('content')  # Search in message content
+        regex_topic = request.args.get('regex_topic')  # Regex pattern for topic
+        json_path = request.args.get('json_path')  # JSON path (e.g., "temperature")
+        json_value = request.args.get('json_value')  # Expected value at JSON path
         
         since = None
         if hours:
             since = datetime.now() - timedelta(hours=int(hours))
         
         if db:
-            # Get from database
+            # Get from database with enhanced filtering
             messages_list = db.get_messages(
                 limit=limit,
                 offset=offset, 
                 topic_filter=topic_filter,
-                since=since
+                since=since,
+                content_search=content_search,
+                regex_topic=regex_topic,
+                json_path=json_path,
+                json_value=json_value
             )
+            # Note: total_count doesn't account for Python filters, so it's approximate
             total_count = db.get_message_count(topic_filter=topic_filter, since=since)
         else:
-            # Fallback to in-memory messages
+            # Fallback to in-memory messages (basic filtering only)
             messages_list = list(reversed(messages))  # Most recent first
             if topic_filter:
                 messages_list = [m for m in messages_list if m['topic'] == topic_filter]
+            if content_search:
+                messages_list = [m for m in messages_list if content_search.lower() in m['payload'].lower()]
             
             total_count = len(messages_list)
             messages_list = messages_list[offset:offset+limit]
@@ -267,7 +282,15 @@ def get_message_history():
             'total': total_count,
             'limit': limit,
             'offset': offset,
-            'has_more': offset + len(messages_list) < total_count
+            'has_more': offset + len(messages_list) < total_count,
+            'filters_applied': {
+                'topic': topic_filter,
+                'content': content_search,
+                'regex_topic': regex_topic,
+                'json_path': json_path,
+                'json_value': json_value,
+                'hours': hours
+            }
         })
         
     except Exception as e:
@@ -328,6 +351,83 @@ def cleanup_database():
         
     except Exception as e:
         logging.error(f"Error cleaning database: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# Filter presets API endpoints
+@app.route('/api/filter-presets')
+def get_filter_presets():
+    """Get all saved filter presets"""
+    try:
+        if not db:
+            return jsonify({'error': 'Database not enabled'}), 400
+        
+        presets = db.get_filter_presets()
+        return jsonify({'presets': presets})
+        
+    except Exception as e:
+        logging.error(f"Error getting filter presets: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/filter-presets', methods=['POST'])
+def save_filter_preset():
+    """Save a new filter preset"""
+    try:
+        if not db:
+            return jsonify({'error': 'Database not enabled'}), 400
+        
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+        filters = data.get('filters', {})
+        
+        if not name or not filters:
+            return jsonify({'error': 'Name and filters are required'}), 400
+        
+        success = db.save_filter_preset(name, filters, description)
+        
+        if success:
+            return jsonify({'success': True, 'message': f'Saved preset: {name}'})
+        else:
+            return jsonify({'error': 'Failed to save preset'}), 500
+        
+    except Exception as e:
+        logging.error(f"Error saving filter preset: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/filter-presets/<name>', methods=['DELETE'])
+def delete_filter_preset(name):
+    """Delete a filter preset"""
+    try:
+        if not db:
+            return jsonify({'error': 'Database not enabled'}), 400
+        
+        success = db.delete_filter_preset(name)
+        
+        if success:
+            return jsonify({'success': True, 'message': f'Deleted preset: {name}'})
+        else:
+            return jsonify({'error': 'Preset not found'}), 404
+        
+    except Exception as e:
+        logging.error(f"Error deleting filter preset: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/filter-presets/<name>/use', methods=['POST'])
+def use_filter_preset(name):
+    """Load and use a filter preset"""
+    try:
+        if not db:
+            return jsonify({'error': 'Database not enabled'}), 400
+        
+        filters = db.use_filter_preset(name)
+        
+        if filters:
+            return jsonify({'success': True, 'filters': filters})
+        else:
+            return jsonify({'error': 'Preset not found'}), 404
+        
+    except Exception as e:
+        logging.error(f"Error using filter preset: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/')
