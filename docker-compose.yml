@@ -1,5 +1,13 @@
-version: '3'
 services:
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9002:9001"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
   web:
     container_name: mqttui
     build: .
@@ -7,5 +15,18 @@ services:
       - "8088:5000"
     volumes:
       - ./:/app
-    env_file:
-      - .env
+    environment:
+      - DEBUG=False
+      - HOST=0.0.0.0
+      - PORT=5000
+      - MQTT_BROKER=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=
+      - MQTT_PASSWORD=
+      - MQTT_KEEPALIVE=60
+      - MQTT_VERSION=3.1.1
+      - SECRET_KEY=your-secret-key
+      - LOG_LEVEL=INFO
+      - MQTT_TOPICS=#
+    depends_on:
+      - mosquitto

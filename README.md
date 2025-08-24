@@ -79,11 +79,19 @@ The following environment variables can be used to configure the application:
 - `DEBUG`: Set to `True` for development mode, `False` for production (default: `False`)
 - `PORT`: The port on which the application will run (default: `5000`)
 - `MQTT_BROKER`: The address of your MQTT broker (default: 'localhost')
+  - **Format**: Use IP address (e.g., `192.168.1.100`) or hostname (e.g., `mqtt.example.com`)
+  - **No protocol prefix**: Do not include `mqtt://` or `tcp://`
+  - **Examples**: `localhost`, `192.168.1.100`, `broker.hivemq.com`, `mqtt.example.com`
 - `MQTT_PORT`: The port of your MQTT broker (default: 1883)
+  - Common ports: `1883` (standard), `8883` (TLS/SSL)
 - `MQTT_USERNAME`: The username for authenticated connection (optional)
 - `MQTT_PASSWORD`: The password for authenticated connection (optional)
 - `MQTT_KEEPALIVE`: Keep-alive time for MQTT connection (default: 60)
-- `MQTT_VERSION`: MQTT protocol version to use (default: '3.1.1')
+- `MQTT_VERSION`: MQTT protocol version to use (default: '3.1.1', options: '3.1.1' or '5')
+- `MQTT_TOPICS`: Comma-separated list of topics to subscribe to (default: '#' for all topics)
+  - **Examples**: `sensors/#`, `home/+/temperature`, `sensors/temp,sensors/humidity`
+- `LOG_LEVEL`: Logging level for the application (default: 'INFO')
+  - Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
 
 ## Development Mode
 

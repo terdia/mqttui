@@ -25,13 +25,28 @@ MQTT_USERNAME = os.getenv('MQTT_USERNAME')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
 MQTT_KEEPALIVE = int(os.getenv('MQTT_KEEPALIVE', 60))
 MQTT_VERSION = os.getenv('MQTT_VERSION', '3.1.1')
+# Support for topic filtering (issue #6)
+MQTT_TOPICS = os.getenv('MQTT_TOPICS', '#')  # Comma-separated list of topics to subscribe to
 
-# Set up logging
-log_level = logging.DEBUG if DEBUG else logging.INFO
-logging.basicConfig(level=log_level)
+# Set up logging with LOG_LEVEL environment variable support (fixes issue #9)
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'DEBUG' if DEBUG else 'INFO').upper()
+log_levels = {
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARNING': logging.WARNING,
+    'WARN': logging.WARNING,  # Support both WARN and WARNING
+    'ERROR': logging.ERROR,
+    'CRITICAL': logging.CRITICAL
+}
+log_level = log_levels.get(LOG_LEVEL, logging.INFO)
+if LOG_LEVEL not in log_levels:
+    print(f"Invalid LOG_LEVEL: {LOG_LEVEL}. Using INFO level.")
+    
+logging.basicConfig(level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 if not DEBUG:
     handler = RotatingFileHandler('mqttui.log', maxBytes=10000, backupCount=1)
-    handler.setLevel(logging.INFO)
+    handler.setLevel(log_level)
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
     logging.getLogger('').addHandler(handler)
 
 app = Flask(__name__, static_url_path='/static')
@@ -117,7 +132,8 @@ def handle_disconnect():
     debug_bar.record('performance', 'active_websockets', active_websockets)
     logging.info(f"WebSocket disconnected. Total active: {active_websockets}")
 
-def on_connect(client, userdata, flags, rc):
+def on_connect(client, userdata, flags, rc, properties=None):
+    # MQTT v5 includes 'properties' parameter, v3.1.1 doesn't (fixes issue #8)
     global connection_count
     error_message = MQTT_RC_CODES.get(rc, f"Unknown error (rc: {rc})")
     connection_status = 'Connected' if rc == 0 else f'Failed: {error_message}'
@@ -128,7 +144,11 @@ def on_connect(client, userdata, flags, rc):
     
     if rc == 0:
         connection_count += 1
-        client.subscribe("#")  # Subscribe to all topics
+        # Subscribe to specified topics (supports filtering - issue #6)
+        topics_to_subscribe = [topic.strip() for topic in MQTT_TOPICS.split(',')]
+        for topic in topics_to_subscribe:
+            client.subscribe(topic)
+            logging.info(f"Subscribed to topic: {topic}")
         logging.info(f"Connected to MQTT broker at {mqtt_broker}:{mqtt_port}. Total connections: {connection_count}")
         debug_bar.remove('mqtt', 'connection_attempt')  # Remove connection attempt entry
     else:
@@ -244,6 +264,7 @@ if __name__ == '__main__' or __name__ == 'app':
         debug_bar.record('mqtt', 'username', mqtt_username if mqtt_username else 'Not set')
         debug_bar.record('mqtt', 'password', 'Set' if mqtt_password else 'Not set')
         debug_bar.record('mqtt', 'protocol', f'MQTT v{mqtt_version}')
+        debug_bar.record('mqtt', 'subscribed_topics', MQTT_TOPICS)
         
         logging.info(f"Attempting to connect to MQTT broker at {mqtt_broker}:{mqtt_port}")
         
@@ -261,3 +282,8 @@ if __name__ == '__main__' or __name__ == 'app':
             debug_bar.record('mqtt', 'connection_status', 'Failed')
     
     connect_mqtt()
+    
+    # Start the Flask-SocketIO server when running directly
+    # This prevents the app from exiting prematurely (fixes issue #12)
+    if __name__ == '__main__':
+        socketio.run(app, host=HOST, port=PORT, debug=DEBUG)

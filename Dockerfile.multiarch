@@ -1,0 +1,20 @@
+# Multi-architecture Dockerfile supporting both AMD64 and ARM64 (fixes issue #3)
+FROM --platform=$TARGETPLATFORM python:3.9-slim
+
+# Set build arguments for multi-platform builds
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+RUN echo "Building on $BUILDPLATFORM for $TARGETPLATFORM"
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Use an entrypoint script to allow for variable substitution
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
