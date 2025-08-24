@@ -6,12 +6,15 @@ MQTT Web Interface is an open-source web application that provides a real-time v
 
 ## Screenshot
 
-![Application Screenshot](static/screenshot.png)
+![Message Flow Screenshot](static/screenshot.png)
 
-![Debug Screenshot](static/screenshot_1.png)
+![Application Screenshot](static/screenshot_1.png)
+
+![Debug Screenshot](static/screenshot_2.png)
 
 ## Features
 
+### Core Functionality
 - Real-time visualization of MQTT topic hierarchy and message flow
 - Ability to publish messages to MQTT topics
 - Display of message statistics (connection count, topic count, message count)
@@ -20,6 +23,13 @@ MQTT Web Interface is an open-source web application that provides a real-time v
 - Debug Bar for enhanced developer insights
 - Flexible configuration for both development and production environments
 
+### New in v1.3.2
+- **Message Persistence**: SQLite database storage with automatic cleanup and configurable limits
+- **Advanced Search & Filtering**: Comprehensive message filtering with multiple search options
+- **Collapsible Sidebar Layout**: Maximize screen real estate for better visualization
+- **Interactive Network Features**: Node pinning, fullscreen mode, and improved layout
+- **Filter Presets**: Save and load frequently used search combinations
+
 ## Installation
 
 ### Using Docker (Recommended)
@@ -27,11 +37,26 @@ MQTT Web Interface is an open-source web application that provides a real-time v
 You can quickly get started with the MQTT Web Interface using Docker:
 
 ```bash
-docker pull terdia07/mqttui:v1.0.0
-docker run -p 5000:5000 terdia07/mqttui:v1.0.0
+docker pull terdia07/mqttui:v1.3.2
+docker run -p 8088:5000 terdia07/mqttui:v1.3.2
 ```
 
-Then access the application at `http://localhost:5000`
+Then access the application at `http://localhost:8088`
+
+#### Docker Compose (Full Setup with MQTT Broker)
+
+For a complete setup with an MQTT broker included:
+
+```bash
+git clone https://github.com/terdia/mqttui.git
+cd mqttui
+docker compose up -d
+```
+
+This will start:
+- Mosquitto MQTT broker on port 1883
+- MQTT Web Interface on port 8088
+- Automatic database persistence enabled
 
 ### Manual Installation
 
@@ -72,6 +97,44 @@ Then access the application at `http://localhost:5000`
    - Publish messages to topics
    - Monitor connection and message statistics
 
+## Using the New Features (v1.3.2)
+
+### Collapsible Sidebar
+- **Hide Sidebar**: Click the `◀` button in the sidebar header to maximize the Message Flow area
+- **Show Sidebar**: When hidden, click `▶ Show Controls` in the main header to restore the sidebar
+- **Purpose**: Get maximum screen real estate for viewing large MQTT network topologies
+
+### Interactive Network Visualization
+- **Pin Nodes**: Double-click any node to pin it in place (turns red when pinned)
+- **Unpin Nodes**: Double-click pinned (red) nodes to unpin them
+- **Right-click Menu**: Right-click nodes for pin/unpin context menu
+- **Fullscreen Mode**: Click `⛶ Fullscreen` button to view Message Flow in fullscreen
+- **Reset Layout**: Click `⟲ Reset` to reorganize all nodes and unpin everything
+- **Drag & Zoom**: Drag to pan the view, scroll to zoom in/out
+
+### Advanced Search & Filtering
+Click `🔍 Advanced Search` in the sidebar to expand filtering options:
+
+- **Topic Filter**: Select specific topics from dropdown
+- **Content Search**: Search within message payloads for specific text
+- **Regex Topic Pattern**: Use patterns like `sensors/.*` or `home/+/temp`
+- **JSON Path & Value**: Query JSON messages (e.g., path: `temperature`, value: `23.5`)
+- **Time Range**: Filter by last hour, 6 hours, 24 hours, or week
+- **Apply Filters**: Click to apply current filter combination
+- **Clear All**: Reset all filters to show all messages
+
+### Filter Presets
+- **Save Preset**: Configure filters, then click `Save` and enter a name
+- **Load Preset**: Select from dropdown and click `Load` to apply saved filters
+- **Preset Management**: Presets are stored in the database and persist between sessions
+
+### Message Persistence
+All MQTT messages are automatically stored in a local SQLite database:
+- **Automatic Storage**: Messages saved with timestamps, topic, payload, and metadata
+- **Configurable Limits**: Set `DB_MAX_MESSAGES` to control storage (default: 10,000)
+- **Auto Cleanup**: Old messages automatically removed when limit exceeded
+- **Search History**: All stored messages are searchable with advanced filters
+
 ## Configuration
 
 The following environment variables can be used to configure the application:
@@ -92,6 +155,12 @@ The following environment variables can be used to configure the application:
   - **Examples**: `sensors/#`, `home/+/temperature`, `sensors/temp,sensors/humidity`
 - `LOG_LEVEL`: Logging level for the application (default: 'INFO')
   - Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+
+### Database Configuration (New in v1.3.2)
+- `DB_ENABLED`: Enable message persistence (default: 'True')
+- `DB_PATH`: Path to SQLite database file (default: './data/mqtt_messages.db')
+- `DB_MAX_MESSAGES`: Maximum messages to store before cleanup (default: 10000)
+- `DB_CLEANUP_DAYS`: Delete messages older than X days (default: 30)
 
 ## Development Mode
 

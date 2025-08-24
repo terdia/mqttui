@@ -87,8 +87,9 @@ function initNetwork() {
             enabled: true,
             stabilization: {
                 enabled: true,
-                iterations: 100,
-                updateInterval: 25
+                iterations: 150,
+                updateInterval: 25,
+                fit: true
             },
             barnesHut: {
                 gravitationalConstant: -8000,
@@ -122,10 +123,24 @@ function initNetwork() {
             dragNodes: true,
             dragView: true,
             zoomView: true
+        },
+        layout: {
+            improvedLayout: true,
+            clusterThreshold: 150
         }
     };
 
     network = new vis.Network(container, data, options);
+    
+    // Auto-fit network after stabilization
+    network.on('stabilizationIterationsDone', function() {
+        network.fit({
+            animation: {
+                duration: 1000,
+                easingFunction: 'easeInOutQuad'
+            }
+        });
+    });
     
     // Add node pinning functionality
     let pinnedNodes = new Set();
@@ -202,6 +217,19 @@ function updateNetwork(message) {
                 shape: 'dot',
                 size: 20 - index * 2
             });
+            
+            // Auto-fit network when new nodes are added (with delay to avoid excessive fitting)
+            clearTimeout(window.autoFitTimeout);
+            window.autoFitTimeout = setTimeout(() => {
+                if (network) {
+                    network.fit({
+                        animation: {
+                            duration: 800,
+                            easingFunction: 'easeInOutQuad'
+                        }
+                    });
+                }
+            }, 2000);
         }
         if (parentId !== nodeId) {
             const edgeId = `${parentId}-${nodeId}`;
@@ -541,13 +569,41 @@ function setupAdvancedSearchHandlers() {
     
     document.getElementById('reset-nodes-btn').addEventListener('click', function() {
         if (network) {
-            network.fit();
-            // Reset node positions by recreating the network
-            const data = {
-                nodes: nodes,
-                edges: edges
-            };
-            network.setData(data);
+            // Unpin all nodes first
+            pinnedNodes.forEach(nodeId => {
+                const node = nodes.get(nodeId);
+                if (node) {
+                    nodes.update({
+                        id: nodeId,
+                        fixed: false,
+                        color: node.originalColor || '#97C2FC'
+                    });
+                }
+            });
+            pinnedNodes.clear();
+            
+            // Reset physics and fit to view
+            network.setOptions({
+                physics: {
+                    enabled: true,
+                    stabilization: {
+                        enabled: true,
+                        iterations: 150,
+                        updateInterval: 25,
+                        fit: true
+                    }
+                }
+            });
+            
+            // Fit network to container with animation
+            setTimeout(() => {
+                network.fit({
+                    animation: {
+                        duration: 1000,
+                        easingFunction: 'easeInOutQuad'
+                    }
+                });
+            }, 500);
         }
     });
 }
