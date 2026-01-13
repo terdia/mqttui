@@ -27,6 +27,8 @@ MQTT_USERNAME = os.getenv('MQTT_USERNAME')
 MQTT_PASSWORD = os.getenv('MQTT_PASSWORD')
 MQTT_KEEPALIVE = int(os.getenv('MQTT_KEEPALIVE', 60))
 MQTT_VERSION = os.getenv('MQTT_VERSION', '3.1.1')
+MQTT_TLS = os.getenv('MQTT_TLS', 'False').lower() in ('true', '1', 't')
+MQTT_TLS_INSECURE = os.getenv('MQTT_TLS_INSECURE', 'False').lower() in ('true', '1', 't')
 # Support for topic filtering (issue #6)
 MQTT_TOPICS = os.getenv('MQTT_TOPICS', '#')  # Comma-separated list of topics to subscribe to
 
@@ -128,7 +130,17 @@ mqtt_username = os.getenv('MQTT_USERNAME')
 mqtt_password = os.getenv('MQTT_PASSWORD')
 mqtt_keepalive = int(os.getenv('MQTT_KEEPALIVE', 60))
 
-logging.info(f"MQTT Setup - Broker: {mqtt_broker}, Port: {mqtt_port}, Username: {'Set' if mqtt_username else 'Not set'}, Password: {'Set' if mqtt_password else 'Not set'}, Version: {mqtt_version}")
+# Apply TLS if requested
+if MQTT_TLS:
+    try:
+        mqtt_client.tls_set()
+        if MQTT_TLS_INSECURE:
+            mqtt_client.tls_insecure_set(True)
+        logging.info(f"MQTT TLS enabled (Insecure: {MQTT_TLS_INSECURE})")
+    except Exception as e:
+        logging.error(f"Failed to set up MQTT TLS: {e}")
+
+logging.info(f"MQTT Setup - Broker: {mqtt_broker}, Port: {mqtt_port}, Username: {'Set' if mqtt_username else 'Not set'}, Password: {'Set' if mqtt_password else 'Not set'}, Version: {mqtt_version}, TLS: {MQTT_TLS}")
 
 messages = []
 topics = set()
@@ -159,7 +171,7 @@ def on_connect(client, userdata, flags, reason_code, properties):
     debug_bar.record('mqtt', 'connection_status', connection_status)
     
     logging.info(f"MQTT Connection attempt - Result: {connection_status}")
-    logging.info(f"MQTT Connection details - Broker: {mqtt_broker}, Port: {mqtt_port}, Username: {'Set' if mqtt_username else 'Not set'}, Password: {'Set' if mqtt_password else 'Not set'}, Protocol: MQTT v{mqtt_version}")
+    logging.info(f"MQTT Connection details - Broker: {mqtt_broker}, Port: {mqtt_port}, Username: {'Set' if mqtt_username else 'Not set'}, Password: {'Set' if mqtt_password else 'Not set'}, Protocol: MQTT v{mqtt_version}, TLS: {MQTT_TLS}")
     
     if rc == 0:
         connection_count += 1
@@ -503,6 +515,8 @@ if __name__ == '__main__' or __name__ == 'app':
         debug_bar.record('mqtt', 'username', mqtt_username if mqtt_username else 'Not set')
         debug_bar.record('mqtt', 'password', 'Set' if mqtt_password else 'Not set')
         debug_bar.record('mqtt', 'protocol', f'MQTT v{mqtt_version}')
+        debug_bar.record('mqtt', 'tls', 'Enabled' if MQTT_TLS else 'Disabled')
+        debug_bar.record('mqtt', 'tls_insecure', str(MQTT_TLS_INSECURE))
         debug_bar.record('mqtt', 'subscribed_topics', MQTT_TOPICS)
         
         logging.info(f"Attempting to connect to MQTT broker at {mqtt_broker}:{mqtt_port}")
