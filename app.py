@@ -3,6 +3,7 @@ __version__ = "1.3.0"
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import paho.mqtt.client as mqtt
+from paho.mqtt.enums import CallbackAPIVersion
 from datetime import datetime, timedelta
 import os
 from debug_bar import debug_bar, debug_bar_middleware
@@ -115,10 +116,10 @@ def after_request(response):
 # MQTT setup
 mqtt_version = os.getenv('MQTT_VERSION', '3.1.1')
 if mqtt_version == '5':
-    mqtt_client = mqtt.Client(client_id=f"mqttui_{os.getpid()}", protocol=mqtt.MQTTv5)
+    mqtt_client = mqtt.Client(CallbackAPIVersion.VERSION2, client_id=f"mqttui_{os.getpid()}", protocol=mqtt.MQTTv5)
     logging.info("Using MQTT v5")
 else:
-    mqtt_client = mqtt.Client(client_id=f"mqttui_{os.getpid()}", clean_session=True, protocol=mqtt.MQTTv311)
+    mqtt_client = mqtt.Client(CallbackAPIVersion.VERSION2, client_id=f"mqttui_{os.getpid()}", protocol=mqtt.MQTTv311)
     logging.info("Using MQTT v3.1.1")
 
 mqtt_broker = os.getenv('MQTT_BROKER', 'localhost')
@@ -149,9 +150,10 @@ def handle_disconnect():
     debug_bar.record('performance', 'active_websockets', active_websockets)
     logging.info(f"WebSocket disconnected. Total active: {active_websockets}")
 
-def on_connect(client, userdata, flags, rc, properties=None):
-    # MQTT v5 includes 'properties' parameter, v3.1.1 doesn't (fixes issue #8)
+def on_connect(client, userdata, flags, reason_code, properties):
+    # MQTT v2.0+ uses reason_code instead of rc
     global connection_count
+    rc = reason_code.value if hasattr(reason_code, 'value') else reason_code
     error_message = MQTT_RC_CODES.get(rc, f"Unknown error (rc: {rc})")
     connection_status = 'Connected' if rc == 0 else f'Failed: {error_message}'
     debug_bar.record('mqtt', 'connection_status', connection_status)
@@ -175,9 +177,10 @@ def on_connect(client, userdata, flags, rc, properties=None):
         time.sleep(5)
         connect_mqtt()  # Retry connection
 
-def on_disconnect(client, userdata, rc):
+def on_disconnect(client, userdata, flags, reason_code, properties):
     global connection_count
     connection_count = max(0, connection_count - 1)
+    rc = reason_code.value if hasattr(reason_code, 'value') else reason_code
     error_message = MQTT_RC_CODES.get(rc, f"Unknown error (rc: {rc})")
     disconnect_reason = 'Clean disconnect' if rc == 0 else f'Unexpected disconnect: {error_message}'
     debug_bar.record('mqtt', 'last_disconnect', disconnect_reason)
