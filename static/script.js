@@ -28,6 +28,7 @@ function mqttuiApp() {
         alertsLoaded: false,
         rulesLoaded: false,
         analyticsLoaded: false,
+        pluginsLoaded: false,
         init() {
             // Initialize Chart.js and Vis.js network
             initChart();

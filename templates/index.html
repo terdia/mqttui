@@ -146,6 +146,11 @@
                         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
                     Analytics
                 </button>
+                <button @click="activeTab = 'plugins'; if (!pluginsLoaded) { htmx.ajax('GET', '/partials/plugins', {target: '#plugins-panel', swap: 'innerHTML'}); pluginsLoaded = true; }"
+                        :class="activeTab === 'plugins' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Plugins
+                </button>
             </div>
 
             <!-- Dashboard Tab -->
@@ -213,6 +218,13 @@
             <div x-show="activeTab === 'analytics'" class="flex-1 flex flex-col overflow-hidden p-4">
                 <div id="analytics-panel" class="flex-1 overflow-y-auto">
                     <div class="text-center p-4 text-gray-400">Loading analytics...</div>
+                </div>
+            </div>
+
+            <!-- Plugins Tab -->
+            <div x-show="activeTab === 'plugins'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="plugins-panel" class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading plugins...</div>
                 </div>
             </div>
         </div>
