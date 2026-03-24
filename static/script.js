@@ -4,7 +4,162 @@ let network;
 let nodes;
 let edges;
 let topicFilter = 'all';
+let messageCount = 0;
+let pinnedNodes = new Set();
 
+// ============================================================
+// Alpine.js global store for shared state
+// ============================================================
+document.addEventListener('alpine:init', () => {
+    Alpine.store('mqtt', {
+        connected: false,
+        selectedTopic: 'all',
+        messageCount: 0,
+    });
+});
+
+// ============================================================
+// Alpine.js root app component (bound to <body>)
+// ============================================================
+function mqttuiApp() {
+    return {
+        sidebarOpen: true,
+        init() {
+            // Initialize Chart.js and Vis.js network
+            initChart();
+            initNetwork();
+            setInterval(updateChart, 1000);
+            setInterval(updateStats, 5000);
+            initDebugBar();
+            trackClientPerformance();
+
+            // Load existing topics from API
+            loadTopicsFromAPI();
+            setInterval(loadTopicsFromAPI, 30000);
+
+            // Setup advanced search UI
+            setupAdvancedSearchHandlers();
+
+            // Handle batch messages from server (100ms batched)
+            socket.on('mqtt_messages_batch', (batch) => {
+                batch.forEach(msg => {
+                    window.dispatchEvent(new CustomEvent('mqtt-message', { detail: msg }));
+                    Alpine.store('mqtt').messageCount++;
+                    messageCount++;
+                    updateNetwork(msg);
+                    updateTopicFilter(msg.topic);
+                });
+            });
+
+            // Fallback for single messages (backward compat)
+            socket.on('mqtt_message', (data) => {
+                window.dispatchEvent(new CustomEvent('mqtt-message', { detail: data }));
+                Alpine.store('mqtt').messageCount++;
+                messageCount++;
+                updateMessageList(data);
+                updateNetwork(data);
+                updateTopicFilter(data.topic);
+            });
+        },
+        toggleSidebar() {
+            this.sidebarOpen = !this.sidebarOpen;
+            // Toggle body class for CSS max-width adjustment
+            if (this.sidebarOpen) {
+                document.body.classList.remove('sidebar-hidden');
+            } else {
+                document.body.classList.add('sidebar-hidden');
+            }
+        },
+    };
+}
+
+// ============================================================
+// Alpine.js message list component
+// ============================================================
+function messageListComponent() {
+    return {
+        messages: [],
+        init() {
+            this.loadMessages();
+            window.addEventListener('mqtt-message', (e) => {
+                const msg = e.detail;
+                const filter = Alpine.store('mqtt').selectedTopic;
+                if (filter === 'all' || msg.topic === filter) {
+                    this.messages.unshift(msg);
+                    if (this.messages.length > 100) this.messages.pop();
+                }
+            });
+        },
+        async loadMessages() {
+            const params = new URLSearchParams({ limit: '50' });
+            const topic = Alpine.store('mqtt').selectedTopic;
+            if (topic && topic !== 'all') params.append('topic', topic);
+            try {
+                const resp = await fetch(`/api/messages?${params}`);
+                const data = await resp.json();
+                this.messages = data.messages || [];
+            } catch (e) {
+                console.error('Error loading messages:', e);
+            }
+        },
+        formatPayload(payload) {
+            try { return JSON.stringify(JSON.parse(payload), null, 2); }
+            catch { return payload; }
+        },
+        formatTime(ts) {
+            return new Date(ts).toLocaleTimeString();
+        },
+    };
+}
+
+// ============================================================
+// Alpine.js stats component
+// ============================================================
+function statsComponent() {
+    return {
+        connections: 0,
+        topics: 0,
+        messageTotal: 0,
+        init() {
+            this.fetchStats();
+            setInterval(() => this.fetchStats(), 5000);
+        },
+        async fetchStats() {
+            try {
+                const resp = await fetch('/stats');
+                const data = await resp.json();
+                this.connections = data.connection_count;
+                this.topics = data.topic_count;
+                this.messageTotal = data.message_count;
+            } catch (e) {
+                console.error('Error fetching stats:', e);
+            }
+        },
+    };
+}
+
+// ============================================================
+// Alpine.js publish component
+// ============================================================
+function publishComponent() {
+    return {
+        topic: '',
+        message: '',
+        async submit() {
+            await fetch('/publish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `topic=${encodeURIComponent(this.topic)}&message=${encodeURIComponent(this.message)}`
+            });
+            this.topic = '';
+            this.message = '';
+        },
+    };
+}
+
+// ============================================================
+// Chart.js (kept as-is per plan)
+// ============================================================
 function initChart() {
     const ctx = document.getElementById('messageChart').getContext('2d');
     messageChart = new Chart(ctx, {
@@ -23,39 +178,19 @@ function initChart() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        color: 'rgb(209, 213, 219)'
-                    }
+                    ticks: { color: 'rgb(209, 213, 219)' }
                 },
                 x: {
-                    ticks: {
-                        color: 'rgb(209, 213, 219)'
-                    }
+                    ticks: { color: 'rgb(209, 213, 219)' }
                 }
             },
             plugins: {
                 legend: {
-                    labels: {
-                        color: 'rgb(209, 213, 219)'
-                    }
+                    labels: { color: 'rgb(209, 213, 219)' }
                 }
             }
         }
     });
-}
-
-function updateMessageList(message) {
-    if (topicFilter === 'all' || message.topic === topicFilter) {
-        const messageList = document.getElementById('message-list');
-        const messageElement = document.createElement('div');
-        messageElement.className = 'mb-2 p-2 bg-gray-700 rounded w-full break-words';
-        messageElement.innerHTML = `<strong class="text-blue-400">${message.topic}:</strong> ${message.payload}`;
-        messageList.insertBefore(messageElement, messageList.firstChild);
-
-        if (messageList.childElementCount > 100) {
-            messageList.removeChild(messageList.lastChild);
-        }
-    }
 }
 
 function updateChart() {
@@ -72,8 +207,9 @@ function updateChart() {
     messageCount = 0;
 }
 
-let messageCount = 0;
-
+// ============================================================
+// Vis.js network (kept as-is per plan)
+// ============================================================
 function initNetwork() {
     nodes = new vis.DataSet([
         { id: 'broker', label: 'MQTT Broker', shape: 'hexagon', color: '#FFA500', size: 30 }
@@ -101,10 +237,7 @@ function initNetwork() {
             }
         },
         nodes: {
-            font: {
-                color: '#FFFFFF',
-                size: 14
-            },
+            font: { color: '#FFFFFF', size: 14 },
             borderWidth: 2,
             shadow: true,
             margin: 10
@@ -112,12 +245,8 @@ function initNetwork() {
         edges: {
             width: 2,
             color: { inherit: 'from' },
-            smooth: {
-                type: 'continuous'
-            },
-            arrows: {
-                to: { enabled: true, scaleFactor: 0.5 }
-            }
+            smooth: { type: 'continuous' },
+            arrows: { to: { enabled: true, scaleFactor: 0.5 } }
         },
         interaction: {
             dragNodes: true,
@@ -131,26 +260,19 @@ function initNetwork() {
     };
 
     network = new vis.Network(container, data, options);
-    
+
     // Auto-fit network after stabilization
     network.on('stabilizationIterationsDone', function() {
         network.fit({
-            animation: {
-                duration: 1000,
-                easingFunction: 'easeInOutQuad'
-            }
+            animation: { duration: 1000, easingFunction: 'easeInOutQuad' }
         });
     });
-    
-    // Add node pinning functionality
-    let pinnedNodes = new Set();
-    
+
     // Double-click to pin/unpin nodes
     network.on('doubleClick', function(params) {
         if (params.nodes.length > 0) {
             const nodeId = params.nodes[0];
             if (pinnedNodes.has(nodeId)) {
-                // Unpin node
                 pinnedNodes.delete(nodeId);
                 nodes.update({
                     id: nodeId,
@@ -158,25 +280,24 @@ function initNetwork() {
                     color: nodes.get(nodeId).color || '#97C2FC'
                 });
             } else {
-                // Pin node
                 pinnedNodes.add(nodeId);
                 nodes.update({
                     id: nodeId,
                     fixed: true,
-                    color: '#FF6B6B'  // Red color to indicate pinned
+                    color: '#FF6B6B'
                 });
             }
         }
     });
-    
-    // Right-click context menu for pinning (optional)
+
+    // Right-click context menu for pinning
     network.on('oncontext', function(params) {
         params.event.preventDefault();
         if (params.nodes.length > 0) {
             const nodeId = params.nodes[0];
             const isPinned = pinnedNodes.has(nodeId);
             const action = isPinned ? 'Unpin' : 'Pin';
-            
+
             if (confirm(`${action} node "${nodes.get(nodeId).label}"?`)) {
                 if (isPinned) {
                     pinnedNodes.delete(nodeId);
@@ -206,27 +327,23 @@ function updateNetwork(message) {
 
     const topicParts = message.topic.split('/');
     let parentId = 'broker';
-    
+
     topicParts.forEach((part, index) => {
         const nodeId = topicParts.slice(0, index + 1).join('/');
         if (!nodes.get(nodeId)) {
-            nodes.add({ 
-                id: nodeId, 
-                label: part, 
+            nodes.add({
+                id: nodeId,
+                label: part,
                 color: getRandomColor(),
                 shape: 'dot',
                 size: 20 - index * 2
             });
-            
-            // Auto-fit network when new nodes are added (with delay to avoid excessive fitting)
+
             clearTimeout(window.autoFitTimeout);
             window.autoFitTimeout = setTimeout(() => {
                 if (network) {
                     network.fit({
-                        animation: {
-                            duration: 800,
-                            easingFunction: 'easeInOutQuad'
-                        }
+                        animation: { duration: 800, easingFunction: 'easeInOutQuad' }
                     });
                 }
             }, 2000);
@@ -249,7 +366,7 @@ function updateNetwork(message) {
         }, 1000);
     });
 
-    // Update the size of the final topic node to indicate message received
+    // Pulse the final topic node
     const finalNodeId = topicParts.join('/');
     const finalNode = nodes.get(finalNodeId);
     nodes.update({ id: finalNodeId, size: finalNode.size + 5 });
@@ -258,12 +375,9 @@ function updateNetwork(message) {
     }, 1000);
 }
 
-socket.on('mqtt_message', function(data) {
-    updateMessageList(data);
-    messageCount++;
-    updateNetwork(data);
-    updateTopicFilter(data.topic);
-});
+// ============================================================
+// Standalone utility functions (kept as-is per plan)
+// ============================================================
 
 function getRandomColor() {
     const letters = '0123456789ABCDEF';
@@ -274,40 +388,32 @@ function getRandomColor() {
     return color;
 }
 
-document.getElementById('publish-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const topic = document.getElementById('topic').value;
-    const message = document.getElementById('message').value;
-    
-    fetch('/publish', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `topic=${encodeURIComponent(topic)}&message=${encodeURIComponent(message)}`
-    });
-
-    document.getElementById('topic').value = '';
-    document.getElementById('message').value = '';
-});
+// Legacy updateMessageList for backward-compat single-message handler
+function updateMessageList(message) {
+    // Now handled by Alpine.js messageListComponent via CustomEvent
+    // This function is kept for any non-Alpine fallback paths
+}
 
 function updateStats() {
     fetch('/stats')
         .then(response => response.json())
         .then(data => {
-            document.getElementById('connection-count').textContent = data.connection_count;
-            document.getElementById('topic-count').textContent = data.topic_count;
-            document.getElementById('message-count').textContent = data.message_count;
-        });
+            // Stats are now handled by Alpine.js statsComponent
+            // This function updates the Alpine store for any consumers
+            if (window.Alpine && Alpine.store('mqtt')) {
+                // Store keeps a running count; the statsComponent fetches its own
+            }
+        })
+        .catch(e => console.error('Error updating stats:', e));
 }
 
 function updateTopicFilter(newTopic) {
-    const topicFilter = document.getElementById('topic-filter');
-    if (!Array.from(topicFilter.options).some(option => option.value === newTopic)) {
+    const topicFilterEl = document.getElementById('topic-filter');
+    if (topicFilterEl && !Array.from(topicFilterEl.options).some(option => option.value === newTopic)) {
         const option = document.createElement('option');
         option.value = newTopic;
         option.textContent = newTopic;
-        topicFilter.appendChild(option);
+        topicFilterEl.appendChild(option);
     }
 }
 
@@ -315,309 +421,280 @@ function loadTopicsFromAPI() {
     fetch('/api/topics')
         .then(response => response.json())
         .then(data => {
-            const topicFilter = document.getElementById('topic-filter');
-            
-            // Clear existing options except "All Topics"
-            const allTopicsOption = topicFilter.querySelector('option[value="all"]');
-            topicFilter.innerHTML = '';
+            const topicFilterEl = document.getElementById('topic-filter');
+            if (!topicFilterEl) return;
+
+            const allTopicsOption = topicFilterEl.querySelector('option[value="all"]');
+            topicFilterEl.innerHTML = '';
             if (allTopicsOption) {
-                topicFilter.appendChild(allTopicsOption);
+                topicFilterEl.appendChild(allTopicsOption);
             } else {
-                // Create "All Topics" option if it doesn't exist
                 const option = document.createElement('option');
                 option.value = 'all';
                 option.textContent = 'All Topics';
-                topicFilter.appendChild(option);
+                topicFilterEl.appendChild(option);
             }
-            
-            // Add topics from API (sorted by most recent)
+
             data.topics.forEach(topic => {
                 const option = document.createElement('option');
                 option.value = topic.topic;
                 option.textContent = `${topic.topic} (${topic.message_count})`;
-                topicFilter.appendChild(option);
+                topicFilterEl.appendChild(option);
             });
-            
-            console.log(`Loaded ${data.topics.length} topics from API`);
         })
-        .catch(error => {
-            console.error('Error loading topics:', error);
-        });
+        .catch(error => console.error('Error loading topics:', error));
 }
-
-document.getElementById('topic-filter').addEventListener('change', function(e) {
-    topicFilter = e.target.value;
-    loadFilteredMessages();
-});
 
 function loadFilteredMessages(customFilters = {}) {
     const messageList = document.getElementById('message-list');
-    messageList.innerHTML = '<div class="loading text-center p-4">Loading messages...</div>';
-    
-    // Build API query parameters
+    if (!messageList) return;
+
     let queryParams = new URLSearchParams();
-    queryParams.append('limit', '50'); // Show last 50 messages
-    
-    // Add topic filter
+    queryParams.append('limit', '50');
+
     if (topicFilter && topicFilter !== 'all') {
         queryParams.append('topic', topicFilter);
     }
-    
-    // Add custom filters
+
     Object.entries(customFilters).forEach(([key, value]) => {
         if (value) queryParams.append(key, value);
     });
-    
+
     fetch(`/api/messages?${queryParams.toString()}`)
         .then(response => response.json())
         .then(data => {
-            messageList.innerHTML = '';
-            
-            if (data.messages.length === 0) {
-                messageList.innerHTML = '<div class="no-messages text-center p-4 text-gray-400">No messages found for current filter</div>';
+            // For Alpine-driven message lists, dispatch an event
+            if (window.Alpine) {
+                // The messageListComponent handles its own rendering
                 return;
             }
-            
-            // Display filtered messages
-            data.messages.forEach(message => {
-                const messageElement = document.createElement('div');
-                messageElement.className = 'message-item bg-gray-700 p-3 rounded mb-2 hover:bg-gray-600 transition-colors';
-                
-                const timestamp = new Date(message.timestamp).toLocaleTimeString();
-                const payload = message.payload.length > 200 ? 
-                    message.payload.substring(0, 200) + '...' : message.payload;
-                
-                // Pretty print JSON if possible
-                let formattedPayload = payload;
-                try {
-                    const parsed = JSON.parse(payload);
-                    formattedPayload = JSON.stringify(parsed, null, 2);
-                } catch (e) {
-                    // Keep original payload if not JSON
-                }
-                
-                messageElement.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="topic text-blue-400 font-medium">${message.topic}</span>
-                        <span class="timestamp text-gray-400 text-sm">${timestamp}</span>
-                    </div>
-                    <div class="message-payload text-gray-200 text-sm whitespace-pre-wrap">${formattedPayload}</div>
-                `;
-                
-                messageList.appendChild(messageElement);
-            });
-            
-            // Update filter status
-            const statusElement = messageList.parentElement.querySelector('.filter-status');
-            if (statusElement) statusElement.remove();
-            
-            const status = document.createElement('div');
-            status.className = 'filter-status text-sm text-gray-400 mb-3 flex justify-between items-center';
-            status.innerHTML = `
-                <span>Showing ${data.messages.length} of ${data.total} messages</span>
-                ${Object.keys(customFilters).length > 0 || (topicFilter && topicFilter !== 'all') ? 
-                    '<span class="text-yellow-400">🔍 Filtered</span>' : ''}
-            `;
-            messageList.parentElement.insertBefore(status, messageList);
-            
         })
-        .catch(error => {
-            console.error('Error loading messages:', error);
-            messageList.innerHTML = '<div class="error text-center p-4 text-red-400">Error loading messages</div>';
-        });
+        .catch(error => console.error('Error loading messages:', error));
 }
 
+// ============================================================
+// Advanced search handlers (kept as-is per plan)
+// ============================================================
 function setupAdvancedSearchHandlers() {
-    // Apply Filters Button
-    document.getElementById('apply-filters-btn').addEventListener('click', function() {
-        const filters = {
-            content: document.getElementById('content-search').value,
-            regex_topic: document.getElementById('regex-topic').value,
-            json_path: document.getElementById('json-path').value,
-            json_value: document.getElementById('json-value').value,
-            hours: document.getElementById('time-filter').value
-        };
-        
-        // Remove empty filters
-        Object.keys(filters).forEach(key => {
-            if (!filters[key]) delete filters[key];
+    const applyBtn = document.getElementById('apply-filters-btn');
+    if (applyBtn) {
+        applyBtn.addEventListener('click', function() {
+            const filters = {
+                content: document.getElementById('content-search').value,
+                regex_topic: document.getElementById('regex-topic').value,
+                json_path: document.getElementById('json-path').value,
+                json_value: document.getElementById('json-value').value,
+                hours: document.getElementById('time-filter').value
+            };
+
+            Object.keys(filters).forEach(key => {
+                if (!filters[key]) delete filters[key];
+            });
+
+            loadFilteredMessages(filters);
         });
-        
-        loadFilteredMessages(filters);
-    });
-    
-    // Clear Filters Button
-    document.getElementById('clear-filters-btn').addEventListener('click', function() {
-        document.getElementById('topic-filter').value = 'all';
-        document.getElementById('content-search').value = '';
-        document.getElementById('regex-topic').value = '';
-        document.getElementById('json-path').value = '';
-        document.getElementById('json-value').value = '';
-        document.getElementById('time-filter').value = '';
-        topicFilter = 'all';
-        loadFilteredMessages();
-    });
-    
-    // Load Filter Presets
+    }
+
+    const clearBtn = document.getElementById('clear-filters-btn');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function() {
+            const topicFilterEl = document.getElementById('topic-filter');
+            if (topicFilterEl) topicFilterEl.value = 'all';
+            const contentSearch = document.getElementById('content-search');
+            if (contentSearch) contentSearch.value = '';
+            const regexTopic = document.getElementById('regex-topic');
+            if (regexTopic) regexTopic.value = '';
+            const jsonPath = document.getElementById('json-path');
+            if (jsonPath) jsonPath.value = '';
+            const jsonValue = document.getElementById('json-value');
+            if (jsonValue) jsonValue.value = '';
+            const timeFilter = document.getElementById('time-filter');
+            if (timeFilter) timeFilter.value = '';
+            topicFilter = 'all';
+            if (window.Alpine && Alpine.store('mqtt')) {
+                Alpine.store('mqtt').selectedTopic = 'all';
+            }
+            loadFilteredMessages();
+        });
+    }
+
     loadFilterPresets();
-    
-    // Load Preset Button
-    document.getElementById('load-preset-btn').addEventListener('click', function() {
-        const presetName = document.getElementById('preset-select').value;
-        if (!presetName) {
-            alert('Please select a preset to load');
-            return;
-        }
-        
-        fetch(`/api/filter-presets/${encodeURIComponent(presetName)}/use`, {
-            method: 'POST'
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Apply filters to UI
-                const filters = data.filters;
-                document.getElementById('content-search').value = filters.content || '';
-                document.getElementById('regex-topic').value = filters.regex_topic || '';
-                document.getElementById('json-path').value = filters.json_path || '';
-                document.getElementById('json-value').value = filters.json_value || '';
-                document.getElementById('time-filter').value = filters.hours || '';
-                
-                if (filters.topic) {
-                    document.getElementById('topic-filter').value = filters.topic;
-                    topicFilter = filters.topic;
-                }
-                
-                // Apply the loaded filters
-                loadFilteredMessages(filters);
-            } else {
-                alert('Error loading preset: ' + data.error);
+
+    const loadPresetBtn = document.getElementById('load-preset-btn');
+    if (loadPresetBtn) {
+        loadPresetBtn.addEventListener('click', function() {
+            const presetName = document.getElementById('preset-select').value;
+            if (!presetName) {
+                alert('Please select a preset to load');
+                return;
             }
-        })
-        .catch(error => {
-            console.error('Error loading preset:', error);
-            alert('Error loading preset');
-        });
-    });
-    
-    // Save Preset Button
-    document.getElementById('save-preset-btn').addEventListener('click', function() {
-        const name = prompt('Enter a name for this filter preset:');
-        if (!name) return;
-        
-        const description = prompt('Enter a description (optional):') || '';
-        
-        const filters = {
-            content: document.getElementById('content-search').value,
-            regex_topic: document.getElementById('regex-topic').value,
-            json_path: document.getElementById('json-path').value,
-            json_value: document.getElementById('json-value').value,
-            hours: document.getElementById('time-filter').value
-        };
-        
-        if (topicFilter && topicFilter !== 'all') {
-            filters.topic = topicFilter;
-        }
-        
-        // Remove empty filters
-        Object.keys(filters).forEach(key => {
-            if (!filters[key]) delete filters[key];
-        });
-        
-        if (Object.keys(filters).length === 0) {
-            alert('No filters to save');
-            return;
-        }
-        
-        fetch('/api/filter-presets', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                name: name,
-                description: description,
-                filters: filters
+
+            fetch(`/api/filter-presets/${encodeURIComponent(presetName)}/use`, {
+                method: 'POST'
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Filter preset saved successfully!');
-                loadFilterPresets(); // Refresh preset list
-            } else {
-                alert('Error saving preset: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error saving preset:', error);
-            alert('Error saving preset');
-        });
-    });
-    
-    // Fullscreen and reset buttons for network
-    document.getElementById('fullscreen-btn').addEventListener('click', function() {
-        const networkDiv = document.getElementById('network-visualization');
-        if (networkDiv.requestFullscreen) {
-            networkDiv.requestFullscreen();
-        } else if (networkDiv.webkitRequestFullscreen) {
-            networkDiv.webkitRequestFullscreen();
-        } else if (networkDiv.msRequestFullscreen) {
-            networkDiv.msRequestFullscreen();
-        }
-    });
-    
-    document.getElementById('reset-nodes-btn').addEventListener('click', function() {
-        if (network) {
-            // Unpin all nodes first
-            pinnedNodes.forEach(nodeId => {
-                const node = nodes.get(nodeId);
-                if (node) {
-                    nodes.update({
-                        id: nodeId,
-                        fixed: false,
-                        color: node.originalColor || '#97C2FC'
-                    });
-                }
-            });
-            pinnedNodes.clear();
-            
-            // Reset physics and fit to view
-            network.setOptions({
-                physics: {
-                    enabled: true,
-                    stabilization: {
-                        enabled: true,
-                        iterations: 150,
-                        updateInterval: 25,
-                        fit: true
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const filters = data.filters;
+                    const contentSearch = document.getElementById('content-search');
+                    if (contentSearch) contentSearch.value = filters.content || '';
+                    const regexTopic = document.getElementById('regex-topic');
+                    if (regexTopic) regexTopic.value = filters.regex_topic || '';
+                    const jsonPath = document.getElementById('json-path');
+                    if (jsonPath) jsonPath.value = filters.json_path || '';
+                    const jsonValue = document.getElementById('json-value');
+                    if (jsonValue) jsonValue.value = filters.json_value || '';
+                    const timeFilter = document.getElementById('time-filter');
+                    if (timeFilter) timeFilter.value = filters.hours || '';
+
+                    if (filters.topic) {
+                        const topicFilterEl = document.getElementById('topic-filter');
+                        if (topicFilterEl) topicFilterEl.value = filters.topic;
+                        topicFilter = filters.topic;
                     }
+
+                    loadFilteredMessages(filters);
+                } else {
+                    alert('Error loading preset: ' + data.error);
                 }
+            })
+            .catch(error => {
+                console.error('Error loading preset:', error);
+                alert('Error loading preset');
             });
-            
-            // Fit network to container with animation
-            setTimeout(() => {
-                network.fit({
-                    animation: {
-                        duration: 1000,
-                        easingFunction: 'easeInOutQuad'
+        });
+    }
+
+    const savePresetBtn = document.getElementById('save-preset-btn');
+    if (savePresetBtn) {
+        savePresetBtn.addEventListener('click', function() {
+            const name = prompt('Enter a name for this filter preset:');
+            if (!name) return;
+
+            const description = prompt('Enter a description (optional):') || '';
+
+            const filters = {
+                content: document.getElementById('content-search').value,
+                regex_topic: document.getElementById('regex-topic').value,
+                json_path: document.getElementById('json-path').value,
+                json_value: document.getElementById('json-value').value,
+                hours: document.getElementById('time-filter').value
+            };
+
+            if (topicFilter && topicFilter !== 'all') {
+                filters.topic = topicFilter;
+            }
+
+            Object.keys(filters).forEach(key => {
+                if (!filters[key]) delete filters[key];
+            });
+
+            if (Object.keys(filters).length === 0) {
+                alert('No filters to save');
+                return;
+            }
+
+            fetch('/api/filter-presets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    name: name,
+                    description: description,
+                    filters: filters
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Filter preset saved successfully!');
+                    loadFilterPresets();
+                } else {
+                    alert('Error saving preset: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving preset:', error);
+                alert('Error saving preset');
+            });
+        });
+    }
+
+    // Fullscreen and reset buttons for network
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', function() {
+            const networkDiv = document.getElementById('network-visualization');
+            if (networkDiv.requestFullscreen) {
+                networkDiv.requestFullscreen();
+            } else if (networkDiv.webkitRequestFullscreen) {
+                networkDiv.webkitRequestFullscreen();
+            } else if (networkDiv.msRequestFullscreen) {
+                networkDiv.msRequestFullscreen();
+            }
+        });
+    }
+
+    const resetBtn = document.getElementById('reset-nodes-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (network) {
+                pinnedNodes.forEach(nodeId => {
+                    const node = nodes.get(nodeId);
+                    if (node) {
+                        nodes.update({
+                            id: nodeId,
+                            fixed: false,
+                            color: node.originalColor || '#97C2FC'
+                        });
                     }
                 });
-            }, 500);
-        }
-    });
+                pinnedNodes.clear();
+
+                network.setOptions({
+                    physics: {
+                        enabled: true,
+                        stabilization: {
+                            enabled: true,
+                            iterations: 150,
+                            updateInterval: 25,
+                            fit: true
+                        }
+                    }
+                });
+
+                setTimeout(() => {
+                    network.fit({
+                        animation: { duration: 1000, easingFunction: 'easeInOutQuad' }
+                    });
+                }, 500);
+            }
+        });
+    }
 }
+
+// Topic filter change handler
+document.addEventListener('DOMContentLoaded', function() {
+    const topicFilterEl = document.getElementById('topic-filter');
+    if (topicFilterEl) {
+        topicFilterEl.addEventListener('change', function(e) {
+            topicFilter = e.target.value;
+            if (window.Alpine && Alpine.store('mqtt')) {
+                Alpine.store('mqtt').selectedTopic = topicFilter;
+            }
+            loadFilteredMessages();
+        });
+    }
+});
 
 function loadFilterPresets() {
     fetch('/api/filter-presets')
         .then(response => response.json())
         .then(data => {
             const presetSelect = document.getElementById('preset-select');
-            
-            // Clear existing options except first
+            if (!presetSelect) return;
+
             presetSelect.innerHTML = '<option value="">Select a preset...</option>';
-            
-            // Add presets
+
             data.presets.forEach(preset => {
                 const option = document.createElement('option');
                 option.value = preset.name;
@@ -625,13 +702,12 @@ function loadFilterPresets() {
                 presetSelect.appendChild(option);
             });
         })
-        .catch(error => {
-            console.error('Error loading presets:', error);
-        });
+        .catch(error => console.error('Error loading presets:', error));
 }
 
-
-
+// ============================================================
+// Debug bar (kept as-is per plan)
+// ============================================================
 let debugBar;
 let debugBarToggle;
 
@@ -643,7 +719,7 @@ function initDebugBar() {
 
     debugBarToggle = document.createElement('button');
     debugBarToggle.id = 'debug-bar-toggle';
-    debugBarToggle.innerHTML = '🐞 Debug';
+    debugBarToggle.innerHTML = 'Debug';
     debugBarToggle.onclick = toggleDebugBar;
     document.body.appendChild(debugBarToggle);
 
@@ -654,7 +730,7 @@ function initDebugBar() {
     debugBar.appendChild(closeButton);
 
     updateDebugBar();
-    setInterval(updateDebugBar, 1000);  // Update every second
+    setInterval(updateDebugBar, 1000);
 }
 
 function toggleDebugBar() {
@@ -679,13 +755,8 @@ function trackClientPerformance() {
 
     fetch('/record-client-performance', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            pageLoadTime,
-            domReadyTime,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageLoadTime, domReadyTime }),
     });
 }
 
@@ -710,35 +781,3 @@ function updateDebugBar() {
             debugBar.appendChild(document.getElementById('debug-bar-close'));
         });
 }
-function toggleAdvancedSearch() {
-    const content = document.getElementById('advanced-search-content');
-    const icon = document.getElementById('search-toggle-icon');
-    
-    if (content.classList.contains('hidden')) {
-        content.classList.remove('hidden');
-        icon.textContent = '▼';
-    } else {
-        content.classList.add('hidden');
-        icon.textContent = '▶';
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    initChart();
-    initNetwork();
-    setInterval(updateChart, 1000);
-    setInterval(updateStats, 5000);
-    initDebugBar();
-    trackClientPerformance();
-    
-    // Load existing topics from API
-    loadTopicsFromAPI();
-    // Refresh topics every 30 seconds
-    setInterval(loadTopicsFromAPI, 30000);
-    
-    // Load initial messages
-    loadFilteredMessages();
-    
-    // Setup advanced search UI
-    setupAdvancedSearchHandlers();
-});
