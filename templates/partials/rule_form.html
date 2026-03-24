@@ -1,4 +1,9 @@
-<div class="bg-gray-800 border border-gray-600 rounded p-4 mb-4" x-data="ruleFormComponent({{ rule.to_dict()|tojson if rule else '{}' }})">
+<div class="bg-gray-800 border border-gray-600 rounded p-4 mb-4"
+     x-data="ruleFormComponent(window.__ruleEditData || {})"
+     x-init="delete window.__ruleEditData">
+  {% if rule %}
+  <script>window.__ruleEditData = {{ rule.to_dict()|tojson }};</script>
+  {% endif %}
   <h4 class="text-md font-semibold mb-3">{{ 'Edit Rule' if rule else 'New Rule' }}</h4>
   <form @submit.prevent="submitRule()">
     <!-- Name -->

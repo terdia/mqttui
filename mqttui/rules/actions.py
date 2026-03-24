@@ -291,10 +291,8 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
 def _execute_telegram(action_dict, context):
     """Send a Telegram message via Bot API.
 
-    action_dict keys:
-        bot_token: Telegram bot token
-        chat_id: Target chat/user ID
-        message_template: Message text with {{topic}}, {{payload}}, {{rule_name}} placeholders
+    Converts to a webhook action targeting the Telegram Bot API, then delegates
+    to _execute_webhook for cooldown, retry, alert history, and metrics.
     """
     bot_token = action_dict.get('bot_token', '')
     chat_id = action_dict.get('chat_id', '')
@@ -305,41 +303,20 @@ def _execute_telegram(action_dict, context):
         return {"success": False, "detail": "Telegram requires bot_token and chat_id"}
 
     # Substitute placeholders
-    message = template
-    for placeholder, value in {
-        '{{topic}}': str(context.get('topic', '')),
-        '{{payload}}': str(context.get('payload', '')),
-        '{{rule_name}}': str(context.get('rule_name', '')),
-        '{{timestamp}}': datetime.utcnow().isoformat(),
-    }.items():
-        message = message.replace(placeholder, value)
+    message = _substitute_template(template, context)
 
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}
+    payload_template = json.dumps({"chat_id": chat_id, "text": message, "parse_mode": "Markdown"})
 
-    # Reuse webhook delivery with cooldown + retry
-    webhook_action = {
-        'url': url,
-        'type': 'webhook',
-    }
-    # Override context to pass the built payload directly
-    _webhook_executor.submit(
-        _deliver_webhook,
-        url=url,
-        payload_json=payload,
-        rule_id=context['rule_id'],
-        rule_name=context['rule_name'],
-        topic=context['topic'],
-    )
-    return {"success": True, "detail": f"Telegram message submitted to chat {chat_id}"}
+    # Delegate to webhook with full cooldown + retry + alert logging
+    return _execute_webhook({'url': url, 'payload_template': payload_template}, context)
 
 
 def _execute_slack(action_dict, context):
     """Send a Slack message via incoming webhook URL.
 
-    action_dict keys:
-        webhook_url: Slack incoming webhook URL
-        message_template: Message text with {{topic}}, {{payload}}, {{rule_name}} placeholders
+    Converts to a webhook action, then delegates to _execute_webhook for
+    cooldown, retry, alert history, and metrics.
     """
     webhook_url = action_dict.get('webhook_url', '')
     template = action_dict.get('message_template',
@@ -348,27 +325,23 @@ def _execute_slack(action_dict, context):
     if not webhook_url:
         return {"success": False, "detail": "Slack requires webhook_url"}
 
-    # Substitute placeholders
-    message = template
+    message = _substitute_template(template, context)
+    payload_template = json.dumps({"text": message})
+
+    return _execute_webhook({'url': webhook_url, 'payload_template': payload_template}, context)
+
+
+def _substitute_template(template, context):
+    """Replace {{variable}} placeholders in a template string."""
+    result = template
     for placeholder, value in {
         '{{topic}}': str(context.get('topic', '')),
         '{{payload}}': str(context.get('payload', '')),
         '{{rule_name}}': str(context.get('rule_name', '')),
         '{{timestamp}}': datetime.utcnow().isoformat(),
     }.items():
-        message = message.replace(placeholder, value)
-
-    payload = {"text": message}
-
-    _webhook_executor.submit(
-        _deliver_webhook,
-        url=webhook_url,
-        payload_json=payload,
-        rule_id=context['rule_id'],
-        rule_name=context['rule_name'],
-        topic=context['topic'],
-    )
-    return {"success": True, "detail": "Slack message submitted"}
+        result = result.replace(placeholder, value)
+    return result
 
 
 def _log_suppressed_alert(rule_id, rule_name, topic, url,
