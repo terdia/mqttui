@@ -172,7 +172,7 @@
                      x-data="messageListComponent()">
                     <h3 class="text-xl font-semibold mb-4">Messages</h3>
                     <div class="flex-1 overflow-y-auto space-y-2" id="message-list">
-                        <template x-for="msg in messages" :key="msg.timestamp + msg.topic">
+                        <template x-for="(msg, idx) in messages" :key="idx">
                             <div class="bg-gray-700 p-3 rounded hover:bg-gray-600 transition-colors">
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
