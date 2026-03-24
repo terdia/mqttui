@@ -209,35 +209,71 @@ function publishComponent() {
 // Chart.js (kept as-is per plan)
 // ============================================================
 function initChart() {
-    if (messageChart) return; // Already initialized
+    if (messageChart) return;
     const canvas = document.getElementById('messageChart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
+
+    // Create gradient fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.parentElement.clientHeight || 160);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+    // Pre-fill with zeros for smooth start
+    const emptyLabels = Array(30).fill('');
+    const emptyData = Array(30).fill(0);
+
     messageChart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: [],
+            labels: emptyLabels,
             datasets: [{
-                label: 'Messages per second',
-                data: [],
+                label: 'msg/s',
+                data: emptyData,
                 borderColor: 'rgb(59, 130, 246)',
-                tension: 0.1
+                backgroundColor: gradient,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                pointHoverBackgroundColor: 'rgb(59, 130, 246)',
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 300 },
+            interaction: { intersect: false, mode: 'index' },
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: { color: 'rgb(209, 213, 219)' }
+                    grid: { color: 'rgba(75, 85, 99, 0.3)', drawBorder: false },
+                    ticks: {
+                        color: 'rgb(156, 163, 175)',
+                        font: { size: 10 },
+                        maxTicksLimit: 4,
+                        callback: v => Number.isInteger(v) ? v : '',
+                    },
+                    border: { display: false },
                 },
                 x: {
-                    ticks: { color: 'rgb(209, 213, 219)' }
+                    display: false,
                 }
             },
             plugins: {
-                legend: {
-                    labels: { color: 'rgb(209, 213, 219)' }
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(17, 24, 39, 0.9)',
+                    titleColor: 'rgb(156, 163, 175)',
+                    bodyColor: 'rgb(59, 130, 246)',
+                    bodyFont: { weight: 'bold', size: 14 },
+                    padding: 8,
+                    displayColors: false,
+                    callbacks: {
+                        title: (items) => items[0]?.label || '',
+                        label: (item) => `${item.raw} msg/s`,
+                    }
                 }
             }
         }
@@ -245,16 +281,23 @@ function initChart() {
 }
 
 function updateChart() {
+    if (!messageChart) return;
     const now = new Date();
-    messageChart.data.labels.push(now.toLocaleTimeString());
+    const timeLabel = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    messageChart.data.labels.push(timeLabel);
     messageChart.data.datasets[0].data.push(messageCount);
 
-    if (messageChart.data.labels.length > 10) {
+    if (messageChart.data.labels.length > 30) {
         messageChart.data.labels.shift();
         messageChart.data.datasets[0].data.shift();
     }
 
-    messageChart.update();
+    // Update the big rate number
+    const rateDisplay = document.getElementById('rate-display');
+    if (rateDisplay) rateDisplay.textContent = messageCount;
+
+    messageChart.update('none'); // skip animation for smoother feel at 1s interval
     messageCount = 0;
 }
 
