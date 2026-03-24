@@ -100,7 +100,13 @@ Plans:
   3. User can run a dry-run test on a rule against a sample payload and see whether the rule would fire
   4. Alert history is visible in a dedicated UI panel
   5. All non-real-time interactions (forms, rule CRUD, pagination) use htmx; no full page reloads required
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — Socket.IO batch emitter, Tailwind v4 CLI, Alpine.js/htmx base template, index.html refactor
+- [ ] 05-02-PLAN.md — Rules Editor UI with htmx partials (create/edit/delete/toggle/dry-run)
+- [ ] 05-03-PLAN.md — Alert History panel with pagination and severity filters
+- [ ] 05-04-PLAN.md — Frontend tests and human visual verification checkpoint
 
 ### Phase 6: Analytics and Observability
 **Goal**: Users and operators can understand what their MQTT infrastructure is doing, both in the UI and in production logs
@@ -136,6 +142,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 2. API and Auth | 0/3 | Not started | - |
 | 3. Rules Engine | 4/4 | Complete   | 2026-03-24 |
 | 4. Alerting | 0/2 | Not started | - |
-| 5. Frontend | 0/? | Not started | - |
+| 5. Frontend | 0/4 | Not started | - |
 | 6. Analytics and Observability | 0/? | Not started | - |
 | 7. Plugin Architecture | 0/? | Not started | - |
