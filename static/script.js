@@ -82,8 +82,10 @@ function mqttuiApp() {
 function messageListComponent() {
     return {
         messages: [],
+        favorites: [],
         init() {
             this.loadMessages();
+            this.loadFavorites();
             window.addEventListener('mqtt-message', (e) => {
                 const msg = e.detail;
                 const filter = Alpine.store('mqtt').selectedTopic;
@@ -103,6 +105,37 @@ function messageListComponent() {
                 this.messages = data.messages || [];
             } catch (e) {
                 console.error('Error loading messages:', e);
+            }
+        },
+        async loadFavorites() {
+            try {
+                const resp = await fetch('/api/v1/topics/favorites');
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    this.favorites = data.data.favorites.map(f => f.topic);
+                }
+            } catch (e) {
+                console.error('Error loading favorites:', e);
+            }
+        },
+        isFavorite(topic) {
+            return this.favorites.includes(topic);
+        },
+        async toggleFavorite(topic) {
+            try {
+                const resp = await fetch(`/api/v1/topics/${encodeURIComponent(topic)}/bookmark`, {
+                    method: 'POST',
+                });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    if (data.data.bookmarked) {
+                        this.favorites.push(topic);
+                    } else {
+                        this.favorites = this.favorites.filter(t => t !== topic);
+                    }
+                }
+            } catch (e) {
+                console.error('Error toggling favorite:', e);
             }
         },
         formatPayload(payload) {
@@ -421,9 +454,10 @@ function updateTopicFilter(newTopic) {
 }
 
 function loadTopicsFromAPI() {
-    fetch('/api/topics')
+    fetch('/api/v1/topics')
         .then(response => response.json())
-        .then(data => {
+        .then(envelope => {
+            const data = envelope.data || envelope;
             const topicFilterEl = document.getElementById('topic-filter');
             if (!topicFilterEl) return;
 
@@ -438,10 +472,20 @@ function loadTopicsFromAPI() {
                 topicFilterEl.appendChild(option);
             }
 
-            data.topics.forEach(topic => {
+            // Sort favorites to top
+            const topics = data.topics || [];
+            topics.sort((a, b) => {
+                if (a.is_favorite && !b.is_favorite) return -1;
+                if (!a.is_favorite && b.is_favorite) return 1;
+                return 0;
+            });
+
+            topics.forEach(topic => {
                 const option = document.createElement('option');
                 option.value = topic.topic;
-                option.textContent = `${topic.topic} (${topic.message_count})`;
+                const star = topic.is_favorite ? '\u2605 ' : '';
+                const count = topic.message_count != null ? ` (${topic.message_count})` : '';
+                option.textContent = `${star}${topic.topic}${count}`;
                 topicFilterEl.appendChild(option);
             });
         })

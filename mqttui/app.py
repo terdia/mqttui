@@ -1,5 +1,4 @@
 import os
-import logging
 
 import structlog
 from flask import Flask

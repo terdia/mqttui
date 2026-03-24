@@ -165,7 +165,17 @@
                         <template x-for="msg in messages" :key="msg.timestamp + msg.topic">
                             <div class="bg-gray-700 p-3 rounded hover:bg-gray-600 transition-colors">
                                 <div class="flex justify-between items-start mb-2">
-                                    <span class="text-blue-400 font-medium" x-text="msg.topic"></span>
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-blue-400 font-medium" x-text="msg.topic"></span>
+                                        <span x-show="msg.retain"
+                                              class="px-1.5 py-0.5 text-xs font-bold bg-amber-600 text-white rounded"
+                                              title="Retained message">R</span>
+                                        <button @click="toggleFavorite(msg.topic)"
+                                                :class="isFavorite(msg.topic) ? 'text-yellow-400' : 'text-gray-500'"
+                                                class="hover:text-yellow-300 text-sm" title="Toggle favorite">
+                                            <span x-html="isFavorite(msg.topic) ? '&#9733;' : '&#9734;'"></span>
+                                        </button>
+                                    </div>
                                     <span class="text-gray-400 text-sm" x-text="formatTime(msg.timestamp)"></span>
                                 </div>
                                 <div class="text-gray-200 text-sm whitespace-pre-wrap" x-text="formatPayload(msg.payload)"></div>
