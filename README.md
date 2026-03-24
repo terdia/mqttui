@@ -141,6 +141,25 @@ This creates 200+ messages, 4 automation rules, triggers alerts, sets up filter 
 | `MQTT_VERSION` | Protocol version (`3.1.1` or `5`) | `3.1.1` |
 | `MQTT_TOPICS` | Topics to subscribe (comma-separated) | `#` |
 
+### TLS/SSL (MQTTS)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MQTT_TLS` | Enable TLS connection | `false` |
+| `MQTT_TLS_CA_CERTS` | Path to CA certificate file | *(optional)* |
+| `MQTT_TLS_CERTFILE` | Path to client certificate | *(optional)* |
+| `MQTT_TLS_KEYFILE` | Path to client private key | *(optional)* |
+| `MQTT_TLS_INSECURE` | Skip certificate verification (not recommended) | `false` |
+
+**Example — connect to a TLS broker:**
+```bash
+docker run -p 8088:5000 \
+  -e MQTT_BROKER=broker.hivemq.com \
+  -e MQTT_PORT=8883 \
+  -e MQTT_TLS=true \
+  terdia07/mqttui:v2.0.0
+```
+
 ### Application
 
 | Variable | Description | Default |

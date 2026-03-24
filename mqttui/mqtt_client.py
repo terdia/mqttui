@@ -77,6 +77,25 @@ def init_mqtt(app):
     if username and password:
         _mqtt_client.username_pw_set(username, password)
 
+    # TLS/SSL support
+    tls_enabled = app.config.get('MQTT_TLS', 'false').lower() in ('true', '1', 'yes')
+    if tls_enabled:
+        import ssl
+        ca_certs = app.config.get('MQTT_TLS_CA_CERTS')
+        certfile = app.config.get('MQTT_TLS_CERTFILE')
+        keyfile = app.config.get('MQTT_TLS_KEYFILE')
+        insecure = app.config.get('MQTT_TLS_INSECURE', 'false').lower() in ('true', '1', 'yes')
+
+        _mqtt_client.tls_set(
+            ca_certs=ca_certs if ca_certs else None,
+            certfile=certfile if certfile else None,
+            keyfile=keyfile if keyfile else None,
+            cert_reqs=ssl.CERT_NONE if insecure else ssl.CERT_REQUIRED,
+        )
+        if insecure:
+            _mqtt_client.tls_insecure_set(True)
+        logger.info(f"TLS enabled (ca_certs={ca_certs}, insecure={insecure})")
+
     # paho-mqtt 2.x callback signatures:
     # on_connect(client, userdata, connect_flags, reason_code, properties)
     # on_disconnect(client, userdata, disconnect_flags, reason_code, properties)
