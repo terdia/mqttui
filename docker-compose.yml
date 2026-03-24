@@ -23,14 +23,20 @@ services:
       - MQTT_PASSWORD=
       - MQTT_KEEPALIVE=60
       - MQTT_VERSION=3.1.1
-      - SECRET_KEY=your-secret-key
+      - SECRET_KEY=mqttui-dev-secret-change-in-prod
       - LOG_LEVEL=INFO
       - MQTT_TOPICS=#
       - DB_ENABLED=True
       - DB_PATH=/app/data/mqtt_messages.db
       - DB_MAX_MESSAGES=10000
       - DB_CLEANUP_DAYS=30
+      - MQTTUI_ADMIN_USER=admin
+      - MQTTUI_ADMIN_PASSWORD=admin
+      - MQTTUI_RATE_LIMIT=30/minute
     volumes:
-      - ./:/app
+      - mqtt-data:/app/data
     depends_on:
       - mosquitto
+
+volumes:
+  mqtt-data:
