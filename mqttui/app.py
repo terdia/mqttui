@@ -110,6 +110,7 @@ def create_app(config=None):
     with app.app_context():
         from mqttui.models import User  # noqa: F811
         from mqttui.rules.models import Rule, AlertHistory  # noqa: F401
+        from mqttui.plugins.models import PluginConfig  # noqa: F401
         sa.create_all()
 
     # Initialize database if enabled
@@ -173,5 +174,9 @@ def create_app(config=None):
     from mqttui.rules.engine import RuleEngine
     rule_engine = RuleEngine(app=app)
     rule_engine.connect()
+
+    # Initialize plugin registry (Phase 7)
+    from mqttui.plugins.registry import init_plugin_registry
+    init_plugin_registry(app)
 
     return app
