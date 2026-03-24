@@ -26,6 +26,7 @@ function mqttuiApp() {
         sidebarOpen: true,
         activeTab: 'dashboard',
         alertsLoaded: false,
+        rulesLoaded: false,
         init() {
             // Initialize Chart.js and Vis.js network
             initChart();
@@ -782,4 +783,126 @@ function updateDebugBar() {
             debugBar.innerHTML = content;
             debugBar.appendChild(document.getElementById('debug-bar-close'));
         });
+}
+
+// ============================================================
+// Alpine.js rule form component (create/edit)
+// ============================================================
+function ruleFormComponent(existing = {}) {
+    const condition = existing.condition || {};
+    const action = existing.action || {};
+    return {
+        form: {
+            id: existing.id || null,
+            name: existing.name || '',
+            description: existing.description || '',
+            trigger_topic: existing.trigger_topic || '',
+            condition_path: condition.path || '',
+            condition_op: condition.op || '',
+            condition_value: condition.value !== undefined ? String(condition.value) : '',
+            action_type: action.type || 'publish',
+            action_topic: action.topic || '',
+            action_payload: action.payload || '',
+            action_url: action.url || '',
+            action_template: action.payload_template || '',
+            action_severity: action.severity || 'info',
+            action_message: action.message || '',
+            rate_limit_per_min: existing.rate_limit_per_min || 10,
+        },
+        error: '',
+        success: '',
+        buildPayload() {
+            const payload = {
+                name: this.form.name,
+                description: this.form.description,
+                trigger_topic: this.form.trigger_topic,
+                rate_limit_per_min: this.form.rate_limit_per_min,
+            };
+            // Build condition
+            if (this.form.condition_op && this.form.condition_path) {
+                const cond = { path: this.form.condition_path, op: this.form.condition_op };
+                if (!['exists', 'not_exists'].includes(this.form.condition_op)) {
+                    let val = this.form.condition_value;
+                    const num = Number(val);
+                    if (!isNaN(num) && val.trim() !== '') val = num;
+                    cond.value = val;
+                }
+                payload.condition = cond;
+            } else {
+                payload.condition = {};
+            }
+            // Build action
+            const act = { type: this.form.action_type };
+            if (this.form.action_type === 'publish') {
+                act.topic = this.form.action_topic;
+                act.payload = this.form.action_payload;
+            } else if (this.form.action_type === 'webhook') {
+                act.url = this.form.action_url;
+                if (this.form.action_template) act.payload_template = this.form.action_template;
+            } else if (this.form.action_type === 'log') {
+                act.severity = this.form.action_severity;
+                act.message = this.form.action_message;
+            }
+            payload.action = act;
+            return payload;
+        },
+        async submitRule() {
+            this.error = '';
+            this.success = '';
+            const payload = this.buildPayload();
+            const url = this.form.id ? `/api/v1/rules/${this.form.id}` : '/api/v1/rules/';
+            const method = this.form.id ? 'PUT' : 'POST';
+            try {
+                const resp = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    this.success = this.form.id ? 'Rule updated' : 'Rule created';
+                    // Reload rules list via htmx
+                    htmx.ajax('GET', '/partials/rules', { target: '#rules-panel', swap: 'innerHTML' });
+                } else {
+                    this.error = data.error?.message || 'Unknown error';
+                }
+            } catch (e) {
+                this.error = 'Network error: ' + e.message;
+            }
+        },
+    };
+}
+
+// ============================================================
+// Alpine.js dry-run test component
+// ============================================================
+function dryRunComponent(ruleId) {
+    return {
+        ruleId: ruleId,
+        topic: '',
+        payload: '',
+        result: null,
+        error: '',
+        async runTest() {
+            this.error = '';
+            this.result = null;
+            let payloadVal = this.payload;
+            try { payloadVal = JSON.parse(this.payload); } catch (e) { /* use raw string */ }
+            try {
+                const resp = await fetch(`/api/v1/rules/${this.ruleId}/test`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic: this.topic, payload: payloadVal }),
+                });
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    this.result = data.data;
+                } else {
+                    this.error = data.error?.message || 'Test failed';
+                }
+            } catch (e) {
+                this.error = 'Network error: ' + e.message;
+            }
+        },
+    };
 }

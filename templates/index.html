@@ -131,6 +131,11 @@
                         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
                     Dashboard
                 </button>
+                <button @click="activeTab = 'rules'; if (!rulesLoaded) { htmx.ajax('GET', '/partials/rules', {target: '#rules-panel', swap: 'innerHTML'}); rulesLoaded = true; }"
+                        :class="activeTab === 'rules' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Rules
+                </button>
                 <button @click="activeTab = 'alerts'; if (!alertsLoaded) { htmx.ajax('GET', '/partials/alerts', {target: '#alerts-panel', swap: 'innerHTML'}); alertsLoaded = true; }"
                         :class="activeTab === 'alerts' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
                         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
@@ -168,6 +173,17 @@
                         </template>
                         <div x-show="messages.length === 0" class="text-center p-4 text-gray-400">No messages</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Rules Tab -->
+            <div x-show="activeTab === 'rules'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="rules-panel"
+                     hx-get="/partials/rules"
+                     hx-trigger="intersect once"
+                     hx-swap="innerHTML"
+                     class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading rules...</div>
                 </div>
             </div>
 

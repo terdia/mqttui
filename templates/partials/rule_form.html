@@ -1,0 +1,98 @@
+<div class="bg-gray-800 border border-gray-600 rounded p-4 mb-4" x-data="ruleFormComponent({{ rule.to_dict()|tojson if rule else '{}' }})">
+  <h4 class="text-md font-semibold mb-3">{{ 'Edit Rule' if rule else 'New Rule' }}</h4>
+  <form @submit.prevent="submitRule()">
+    <!-- Name -->
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Name *</label>
+      <input type="text" x-model="form.name" required
+             class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+    </div>
+    <!-- Description -->
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Description</label>
+      <input type="text" x-model="form.description"
+             class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+    </div>
+    <!-- Trigger Topic -->
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Trigger Topic *</label>
+      <input type="text" x-model="form.trigger_topic" required placeholder="sensors/+/temperature"
+             class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+      <span class="text-xs text-gray-500">Supports MQTT wildcards: + (single level), # (multi level)</span>
+    </div>
+    <!-- Condition -->
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Condition (optional)</label>
+      <div class="flex gap-2">
+        <input type="text" x-model="form.condition_path" placeholder="payload.temperature"
+               class="flex-1 rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+        <select x-model="form.condition_op"
+                class="rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+          <option value="">No condition</option>
+          <option value="gt">></option>
+          <option value="gte">>=</option>
+          <option value="lt"><</option>
+          <option value="lte"><=</option>
+          <option value="eq">==</option>
+          <option value="ne">!=</option>
+          <option value="contains">contains</option>
+          <option value="regex">regex</option>
+          <option value="exists">exists</option>
+        </select>
+        <input type="text" x-model="form.condition_value" placeholder="30"
+               x-show="!['exists', 'not_exists', ''].includes(form.condition_op)"
+               class="w-24 rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+      </div>
+    </div>
+    <!-- Action Type -->
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Action *</label>
+      <select x-model="form.action_type"
+              class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2 mb-2">
+        <option value="publish">Publish to Topic</option>
+        <option value="webhook">Webhook (HTTP POST)</option>
+        <option value="log">Log Alert</option>
+      </select>
+      <!-- Publish fields -->
+      <div x-show="form.action_type === 'publish'" class="space-y-2">
+        <input type="text" x-model="form.action_topic" placeholder="alerts/high-temp"
+               class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+        <textarea x-model="form.action_payload" placeholder='{"alert": "temperature exceeded"}'
+                  class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2" rows="2"></textarea>
+      </div>
+      <!-- Webhook fields -->
+      <div x-show="form.action_type === 'webhook'" class="space-y-2">
+        <input type="text" x-model="form.action_url" placeholder="https://hooks.example.com/notify"
+               class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+        <textarea x-model="form.action_template" placeholder="Optional: payload template with {{topic}}, {{payload}}"
+                  class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2" rows="2"></textarea>
+      </div>
+      <!-- Log fields -->
+      <div x-show="form.action_type === 'log'" class="space-y-2">
+        <select x-model="form.action_severity"
+                class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+          <option value="info">Info</option>
+          <option value="warning">Warning</option>
+          <option value="critical">Critical</option>
+        </select>
+        <input type="text" x-model="form.action_message" placeholder="Alert message"
+               class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+      </div>
+    </div>
+    <!-- Rate Limit -->
+    <div class="mb-3">
+      <label class="block text-sm font-medium mb-1">Rate Limit (per minute)</label>
+      <input type="number" x-model.number="form.rate_limit_per_min" min="1" max="1000"
+             class="w-24 rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+    </div>
+    <!-- Buttons -->
+    <div class="flex gap-2">
+      <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm" x-text="form.id ? 'Update' : 'Create'"></button>
+      <button type="button" @click="$el.closest('#rule-form-container').innerHTML=''"
+              class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm">Cancel</button>
+    </div>
+    <!-- Error/Success messages -->
+    <div x-show="error" x-text="error" class="mt-2 text-red-400 text-sm"></div>
+    <div x-show="success" x-text="success" class="mt-2 text-green-400 text-sm"></div>
+  </form>
+</div>
