@@ -48,6 +48,34 @@ def test_db(tmp_path):
 
 
 @pytest.fixture
+def auth_client(app):
+    """Flask test client with authenticated session."""
+    client = app.test_client()
+    with app.app_context():
+        from mqttui.models import User
+        from mqttui.extensions import sa
+        user = User.query.filter_by(username='admin').first()
+        if not user:
+            user = User(username='admin')
+            user.set_password('admin')
+            user.generate_api_token()
+            sa.session.add(user)
+            sa.session.commit()
+    # Log in via test client
+    client.post('/login', data={'username': 'admin', 'password': 'admin'}, follow_redirects=False)
+    return client
+
+
+@pytest.fixture
+def api_token(app):
+    """Return a valid API token for testing."""
+    with app.app_context():
+        from mqttui.models import User
+        user = User.query.filter_by(username='admin').first()
+        return user.api_token
+
+
+@pytest.fixture
 def mock_mqtt():
     """Mock MQTT client to prevent broker connections."""
     with patch('mqttui.mqtt_client._mqtt_client') as mock_client:

@@ -528,6 +528,15 @@ def revoke_token():
 # Blueprint error handlers
 # ---------------------------------------------------------------------------
 
+@api_v1_bp.errorhandler(429)
+def handle_429(e):
+    response = api_error("Rate limit exceeded", "RATE_LIMIT_EXCEEDED", 429)
+    # Flask-Limiter sets the description with retry info
+    resp = response[0]
+    resp.headers['Retry-After'] = str(60)
+    return resp, 429
+
+
 @api_v1_bp.errorhandler(404)
 def handle_404(e):
     return api_error("Resource not found", "NOT_FOUND", 404)
