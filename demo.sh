@@ -66,14 +66,14 @@ echo -e "  ${GREEN}✓ 30 humidity readings${NC}"
 
 # Motion sensors (binary events)
 for i in $(seq 1 20); do
-    room=$(echo "hallway kitchen garage front-door" | tr ' ' '\n' | shuf -n1)
+    room=$(echo "hallway kitchen garage front-door" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     $PUB -t "sensors/$room/motion" -m "{\"detected\": true, \"confidence\": $((70 + RANDOM % 30))}"
 done
 echo -e "  ${GREEN}✓ 20 motion events${NC}"
 
 # Battery levels (good for threshold alerting)
 for i in $(seq 1 20); do
-    device=$(echo "thermostat doorbell smoke-detector leak-sensor" | tr ' ' '\n' | shuf -n1)
+    device=$(echo "thermostat doorbell smoke-detector leak-sensor" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     battery=$((5 + RANDOM % 95))
     $PUB -t "devices/$device/battery" -m "{\"level\": $battery, \"charging\": false}"
 done
@@ -86,8 +86,8 @@ echo -e "  ${GREEN}✓ 2 retained status messages${NC}"
 
 # Home automation commands
 for i in $(seq 1 28); do
-    device=$(echo "light-1 light-2 fan ac heater" | tr ' ' '\n' | shuf -n1)
-    state=$(echo "on off" | tr ' ' '\n' | shuf -n1)
+    device=$(echo "light-1 light-2 fan ac heater" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    state=$(echo "on off" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     $PUB -t "home/$device/command" -m "{\"state\": \"$state\", \"source\": \"automation\"}"
 done
 echo -e "  ${GREEN}✓ 28 home automation commands${NC}"
@@ -170,7 +170,7 @@ echo -e "  ${GREEN}✓ 5 high-temp messages (should trigger alerts)${NC}"
 
 # Trigger low battery
 for i in $(seq 1 3); do
-    device=$(echo "thermostat doorbell smoke-detector" | tr ' ' '\n' | shuf -n1)
+    device=$(echo "thermostat doorbell smoke-detector" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     battery=$((3 + RANDOM % 15))
     $PUB -t "devices/$device/battery" -m "{\"level\": $battery, \"charging\": false}"
     sleep 0.3
@@ -179,7 +179,7 @@ echo -e "  ${GREEN}✓ 3 low-battery messages (should trigger warnings)${NC}"
 
 # Trigger motion
 for i in $(seq 1 5); do
-    room=$(echo "hallway kitchen garage" | tr ' ' '\n' | shuf -n1)
+    room=$(echo "hallway kitchen garage" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     $PUB -t "sensors/$room/motion" -m "{\"detected\": true, \"confidence\": $((80 + RANDOM % 20))}"
     sleep 0.2
 done
