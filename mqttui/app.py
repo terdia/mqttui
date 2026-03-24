@@ -179,4 +179,10 @@ def create_app(config=None):
     from mqttui.plugins.registry import init_plugin_registry
     init_plugin_registry(app)
 
+    # Initialize plugin runner and wire to event bus (Phase 7)
+    from mqttui.plugins.runner import init_plugin_runner
+    plugin_runner = init_plugin_runner(app)
+    mqtt_message_received.connect(plugin_runner.on_mqtt_message)
+    rule_fired.connect(plugin_runner.on_rule_trigger)
+
     return app
