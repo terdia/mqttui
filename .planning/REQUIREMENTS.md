@@ -33,7 +33,7 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 ### Rules Engine
 
-- [ ] **RULE-01**: User can create automation rule with topic pattern trigger and payload condition
+- [x] **RULE-01**: User can create automation rule with topic pattern trigger and payload condition
 - [ ] **RULE-02**: User can define rule actions: publish to topic, trigger webhook, or log alert
 - [ ] **RULE-03**: Rules evaluate against incoming MQTT messages in real-time
 - [ ] **RULE-04**: Rules engine includes loop detection with per-rule rate limiting and global circuit breaker
@@ -126,7 +126,7 @@ Deferred to future releases. Tracked but not in current roadmap.
 | AUTH-02 | Phase 2 | Complete |
 | AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 2 | Complete |
-| RULE-01 | Phase 3 | Pending |
+| RULE-01 | Phase 3 | Complete |
 | RULE-02 | Phase 3 | Pending |
 | RULE-03 | Phase 3 | Pending |
 | RULE-04 | Phase 3 | Pending |
