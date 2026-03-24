@@ -118,7 +118,13 @@ Plans:
   3. Application logs are structured JSON (structlog) and include request context on every log line
   4. A Prometheus scrape of /metrics returns message rate, active connections, and rule fire counts
   5. User can bookmark a topic as a favorite for quick access, and retained messages are visually distinguished
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Analytics engine with rate counters, histograms, and REST API
+- [ ] 06-02-PLAN.md — Structured logging (structlog) and Prometheus /metrics endpoint
+- [ ] 06-03-PLAN.md — Topic favorites/bookmarks and retained message indicator
+- [ ] 06-04-PLAN.md — Analytics dashboard UI widgets (top topics, payload histograms)
 
 ### Phase 7: Plugin Architecture
 **Goal**: Third-party developers can extend MQTTUI with custom handlers that run in isolation without accessing application internals
@@ -143,5 +149,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Rules Engine | 4/4 | Complete   | 2026-03-24 |
 | 4. Alerting | 0/2 | Not started | - |
 | 5. Frontend | 4/4 | Complete   | 2026-03-24 |
-| 6. Analytics and Observability | 0/? | Not started | - |
+| 6. Analytics and Observability | 0/4 | Not started | - |
 | 7. Plugin Architecture | 0/? | Not started | - |
