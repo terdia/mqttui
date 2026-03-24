@@ -49,7 +49,12 @@ Plans:
   3. OpenAPI documentation is accessible at /api/v1/docs
   4. Requests to the publish endpoint beyond the configured rate limit return 429
   5. Application refuses to start with the default SECRET_KEY when FLASK_ENV=production
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 02-01-PLAN.md — User model, Flask-Login auth, login/logout flow, SECRET_KEY guard
+- [ ] 02-02-PLAN.md — API v1 prefix migration, JSON envelope, CORS, OpenAPI docs
+- [ ] 02-03-PLAN.md — API token auth, rate limiting, comprehensive test suite
 
 ### Phase 3: Rules Engine
 **Goal**: Users can automate their MQTT infrastructure — the app acts on messages, not just displays them
@@ -118,7 +123,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 1/3 | In Progress|  |
-| 2. API and Auth | 0/? | Not started | - |
+| 2. API and Auth | 0/3 | Not started | - |
 | 3. Rules Engine | 0/? | Not started | - |
 | 4. Alerting | 0/? | Not started | - |
 | 5. Frontend | 0/? | Not started | - |
