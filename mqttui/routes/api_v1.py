@@ -423,6 +423,47 @@ def get_version():
 
 
 # ---------------------------------------------------------------------------
+# OpenAPI Documentation
+# ---------------------------------------------------------------------------
+
+@api_v1_bp.route('/docs')
+def api_docs():
+    """Serve Swagger UI for API documentation."""
+    html = """<!DOCTYPE html>
+<html><head><title>MQTTUI API Docs</title>
+<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+</head><body>
+<div id="swagger-ui"></div>
+<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+<script>SwaggerUIBundle({url: '/api/v1/openapi.json', dom_id: '#swagger-ui'})</script>
+</body></html>"""
+    return html
+
+
+@api_v1_bp.route('/openapi.json')
+def openapi_spec():
+    """Return OpenAPI 3.0 specification."""
+    from apispec import APISpec
+    from apispec_webframeworks.flask import FlaskPlugin
+
+    spec = APISpec(
+        title="MQTTUI API",
+        version="1.0.0",
+        openapi_version="3.0.3",
+        info={"description": "MQTT monitoring and automation API"},
+        plugins=[FlaskPlugin()],
+    )
+    # Register paths from current app's url_map
+    with current_app.test_request_context():
+        for rule in current_app.url_map.iter_rules():
+            if rule.rule.startswith('/api/v1/') and rule.endpoint != 'static':
+                view = current_app.view_functions.get(rule.endpoint)
+                if view:
+                    spec.path(view=view, app=current_app)
+    return jsonify(spec.to_dict())
+
+
+# ---------------------------------------------------------------------------
 # Blueprint error handlers
 # ---------------------------------------------------------------------------
 

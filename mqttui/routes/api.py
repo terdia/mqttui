@@ -1,3 +1,5 @@
+# TODO: Remove legacy /api/ routes in Phase 5 after frontend migrates to /api/v1/
+# All new API development should use mqttui/routes/api_v1.py
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import logging

@@ -4,7 +4,7 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 
-from mqttui.extensions import socketio
+from mqttui.extensions import socketio, sa, login_manager
 from mqttui.events import mqtt_message_received
 
 
@@ -86,8 +86,31 @@ def create_app(config=None):
         handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         logging.getLogger('').addHandler(handler)
 
+    # SECRET_KEY production guard
+    flask_env = os.getenv('FLASK_ENV', 'development')
+    insecure_keys = {'dev', 'change-me', 'your-secret-key'}
+    if flask_env == 'production' and app.config['SECRET_KEY'] in insecure_keys:
+        raise RuntimeError(
+            "SECRET_KEY is insecure. Set a strong SECRET_KEY environment variable for production."
+        )
+
     # Initialize SocketIO with gevent async mode
     socketio.init_app(app, async_mode='gevent')
+
+    # Enable CORS for API endpoints
+    from flask_cors import CORS
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+    # Configure and initialize SQLAlchemy for user database
+    db_dir = os.path.dirname(os.path.abspath(app.config.get('DB_PATH', 'mqtt_messages.db')))
+    app.config.setdefault('SQLALCHEMY_DATABASE_URI', f"sqlite:///{os.path.join(db_dir, 'mqttui_users.db')}")
+    app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+    sa.init_app(app)
+    login_manager.init_app(app)
+
+    with app.app_context():
+        from mqttui.models import User  # noqa: F811
+        sa.create_all()
 
     # Initialize database if enabled
     if app.config['DB_ENABLED']:
@@ -105,12 +128,19 @@ def create_app(config=None):
 
     # Register blueprints
     from mqttui.routes.main import bp as main_bp
-    from mqttui.routes.api import bp as api_bp
+    from mqttui.routes.api import bp as api_bp  # TODO: Remove legacy /api/ routes in Phase 5 after frontend migrates to /api/v1/
     from mqttui.routes.debug import bp as debug_bp
+    from mqttui.routes.api_v1 import api_v1_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(debug_bp)
+    app.register_blueprint(api_v1_bp)
+
+    # Register auth blueprint and seed admin user
+    from mqttui.auth import auth_bp, seed_admin_user
+    app.register_blueprint(auth_bp)
+    seed_admin_user(app)
 
     # Initialize MQTT client (paho-mqtt 2.x with event bus)
     from mqttui.mqtt_client import init_mqtt
