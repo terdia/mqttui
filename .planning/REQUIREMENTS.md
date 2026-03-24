@@ -40,7 +40,7 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 - [x] **RULE-05**: User can enable/disable individual rules without deleting them
 - [ ] **RULE-06**: User can create time-based rules (fire at schedule, e.g., publish heartbeat every 5 minutes)
 - [ ] **RULE-07**: Rules hot-reload from database without application restart
-- [ ] **RULE-08**: Rule CRUD available via REST API endpoints
+- [x] **RULE-08**: Rule CRUD available via REST API endpoints
 
 ### Alerting
 
@@ -133,7 +133,7 @@ Deferred to future releases. Tracked but not in current roadmap.
 | RULE-05 | Phase 3 | Complete |
 | RULE-06 | Phase 3 | Pending |
 | RULE-07 | Phase 3 | Pending |
-| RULE-08 | Phase 3 | Pending |
+| RULE-08 | Phase 3 | Complete |
 | ALRT-01 | Phase 4 | Pending |
 | ALRT-02 | Phase 4 | Pending |
 | ALRT-03 | Phase 4 | Pending |
