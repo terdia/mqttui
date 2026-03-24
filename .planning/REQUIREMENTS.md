@@ -55,8 +55,8 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 - [x] **UI-01**: Frontend refactored from single-file vanilla JS to Alpine.js component architecture
 - [x] **UI-02**: Server-side Socket.IO message batching (100ms window) prevents UI flooding at high throughput
 - [ ] **UI-03**: Rules editor UI allows create/edit/delete rules with inline dry-run testing
-- [ ] **UI-04**: Alert history viewable in dedicated UI panel
-- [ ] **UI-05**: htmx used for non-real-time interactions (forms, CRUD, pagination)
+- [x] **UI-04**: Alert history viewable in dedicated UI panel
+- [x] **UI-05**: htmx used for non-real-time interactions (forms, CRUD, pagination)
 - [x] **UI-06**: Tailwind CSS v4 via standalone CLI (no Node.js dependency in production)
 
 ### Analytics
@@ -142,8 +142,8 @@ Deferred to future releases. Tracked but not in current roadmap.
 | UI-01 | Phase 5 | Complete |
 | UI-02 | Phase 5 | Complete |
 | UI-03 | Phase 5 | Pending |
-| UI-04 | Phase 5 | Pending |
-| UI-05 | Phase 5 | Pending |
+| UI-04 | Phase 5 | Complete |
+| UI-05 | Phase 5 | Complete |
 | UI-06 | Phase 5 | Complete |
 | ANLYT-01 | Phase 6 | Pending |
 | ANLYT-02 | Phase 6 | Pending |
