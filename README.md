@@ -35,8 +35,10 @@ An open-source web application that monitors, visualizes, and **automates** your
 - **Dry-Run Testing**: Test rules against sample payloads before activating
 - **Hot-Reload**: Rule changes take effect immediately, no restart needed
 
-### Alerting
-- HTTP webhook delivery with customizable payload templates (`{{topic}}`, `{{payload}}`, `{{timestamp}}`)
+### Alerting & Notifications
+- **Telegram**: Enter bot token + chat ID — get alerts directly in Telegram
+- **Slack**: Enter incoming webhook URL — get alerts in your Slack channel
+- **HTTP Webhooks**: Generic webhook with customizable payload templates (`{{topic}}`, `{{payload}}`, `{{timestamp}}`)
 - Retry with exponential backoff (1s / 5s / 25s) on server errors
 - SSRF protection — blocks private/reserved addresses
 - Alert deduplication with configurable cooldown (5 min default)
@@ -106,6 +108,16 @@ python wsgi.py
 pip install -r requirements.txt
 pytest tests/ -q
 ```
+
+### Demo Data
+
+Populate realistic test data across all features (requires Docker Compose running):
+
+```bash
+./demo.sh
+```
+
+This creates 200+ messages, 4 automation rules, triggers alerts, sets up filter presets, and bookmarks topics. Great for evaluating all tabs and features.
 
 ## Configuration
 

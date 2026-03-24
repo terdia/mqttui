@@ -20,8 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dry-run testing**: Test rules against sample payloads before activating
 - **Rules REST API**: Full CRUD at `/api/v1/rules/` with enable/disable and dry-run endpoints
 
-#### Webhook Alerting
-- **HTTP webhook delivery**: Configurable URL with customizable payload templates using `{{topic}}`, `{{payload}}`, `{{timestamp}}` variables
+#### Alerting & Notifications
+- **Telegram alerts**: First-class action type — enter bot token + chat ID, get alerts in Telegram with Markdown formatting
+- **Slack alerts**: First-class action type — enter incoming webhook URL, get alerts in Slack with mrkdwn formatting
+- **HTTP webhook delivery**: Generic webhook with customizable payload templates using `{{topic}}`, `{{payload}}`, `{{timestamp}}` variables
 - **Retry with exponential backoff**: 3 retries at 1s, 5s, 25s on server errors
 - **SSRF protection**: Blocks webhook URLs pointing to private/reserved addresses (RFC-1918, localhost, link-local)
 - **Alert deduplication**: Configurable cooldown window (5 min default) prevents alert storms
@@ -34,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rules Editor UI**: Create, edit, delete, enable/disable, and dry-run test rules inline
 - **Alert History panel**: Filterable by rule, severity, and time range with pagination
 - **Tab navigation**: Dashboard / Rules / Alerts / Analytics / Plugins tabs
+- **Favorites toggle**: Filter message list to show only bookmarked topics
+- **Advanced Search**: Filter messages by topic, content, regex, JSON path, and time range
+- **Redesigned message rate chart**: Gradient area chart with 30-second rolling window and live msg/s counter
+- **Demo script**: `./demo.sh` populates realistic test data across all features
 
 #### REST API & Authentication
 - **Versioned API**: All endpoints under `/api/v1/` prefix with consistent JSON envelope responses
