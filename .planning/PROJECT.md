@@ -1,8 +1,8 @@
-# MQTTUI — Next Generation MQTT Web Interface
+# MQTTUI — Intelligent MQTT Web Interface
 
 ## What This Is
 
-A real-time web-based MQTT message visualization and control tool that connects to MQTT brokers, displays topic hierarchies as interactive network graphs, persists messages to SQLite, and provides advanced search/filtering. Currently a Python/Flask app (~2,500 lines) with vanilla JS frontend, Socket.IO real-time streaming, and Docker deployment. The goal is to transform it into a powerful, agency-driven MQTT platform with automation capabilities, modern architecture, and a plugin ecosystem.
+A real-time web-based MQTT automation platform that monitors, visualizes, and acts on MQTT messages. Features an automation rules engine (IF topic/payload THEN publish/webhook/alert), interactive topic hierarchy graph, per-topic analytics, structured logging with Prometheus metrics, and a subprocess-isolated plugin architecture. Built on Python/Flask with Alpine.js + htmx frontend, deployed via Docker.
 
 ## Core Value
 
@@ -18,61 +18,75 @@ Users can monitor, interact with, and automate their MQTT infrastructure from a 
 - ✓ SQLite message persistence with configurable limits — existing
 - ✓ Advanced search/filtering (topic, content, regex, JSON path, time range) — existing
 - ✓ Filter presets (save/load frequently-used filter configs) — existing
-- ✓ Debug bar with connection status and performance metrics — existing
 - ✓ Docker + Docker Compose deployment with multi-arch support — existing
 - ✓ MQTT v3.1.1 and v5 protocol support — existing
-- ✓ Configurable via 15+ environment variables — existing
-- ✓ Collapsible sidebar with responsive dark theme UI — existing
-- ✓ Message rate chart (messages/second via Chart.js) — existing
+- ✓ Flask application factory with blueprints — v2.0
+- ✓ gevent async mode replacing eventlet — v2.0
+- ✓ paho-mqtt 2.x with modern callback API — v2.0
+- ✓ SQLite WAL mode with busy_timeout — v2.0
+- ✓ Blinker event bus (mqtt_message, rule_fired, alert_triggered) — v2.0
+- ✓ Pytest infrastructure with 218+ tests — v2.0
+- ✓ Versioned REST API at /api/v1/ with OpenAPI docs — v2.0
+- ✓ User authentication (Flask-Login, session + API token) — v2.0
+- ✓ Rate limiting on publish endpoint — v2.0
+- ✓ Automation rules engine with 11-operator condition evaluator — v2.0
+- ✓ Loop detection (__source marker + rate limiter + circuit breaker) — v2.0
+- ✓ APScheduler time-based rules (cron schedules) — v2.0
+- ✓ Webhook delivery with httpx, retry/backoff, SSRF protection — v2.0
+- ✓ Alert deduplication/cooldown — v2.0
+- ✓ Alpine.js + htmx component-based frontend — v2.0
+- ✓ Server-side Socket.IO batching (100ms window) — v2.0
+- ✓ Rules Editor UI with inline dry-run testing — v2.0
+- ✓ Per-topic analytics with rate counters and histograms — v2.0
+- ✓ Structured JSON logging (structlog) — v2.0
+- ✓ Prometheus /metrics endpoint — v2.0
+- ✓ Topic favorites/bookmarks — v2.0
+- ✓ Plugin architecture with subprocess isolation — v2.0
 
 ### Active
 
-- [ ] Automation rules engine — "when topic X receives payload Y, publish to topic Z"
-- [ ] Modern, responsive frontend with component-based architecture
-- [ ] Plugin/extension architecture for custom handlers
-- [ ] Real-time alerting and webhook notifications
-- [ ] Enhanced message analytics and dashboards
-- [ ] REST API documentation and formalization
-- [ ] Testing infrastructure (unit, integration, e2e)
-- [ ] Performance and scalability improvements (multi-worker, caching)
-- [ ] Message transformation pipelines
-- [ ] User authentication and multi-user support
-- [ ] Improved error handling and observability (structured logging, metrics export)
-- [ ] Topic hierarchy management and favorites
+- [ ] Message transformation pipelines (JSONata expressions)
+- [ ] Multi-broker connection management
+- [ ] Custom dashboard layout
+- [ ] Plugin hot-reload without restart
+- [ ] Mobile-optimized responsive breakpoints
 
 ### Out of Scope
 
-- Mobile native app — web-first, responsive design sufficient for v2.0
-- Multi-broker management — single broker connection for this milestone
-- Enterprise SSO/SAML — basic auth sufficient, enterprise features later
-- Message replay/time travel — complex feature, defer to future milestone
-- Custom MQTT broker implementation — we connect to existing brokers
+- Visual flow builder (Node-RED style) — Node-RED already does this better
+- Enterprise SSO/SAML — basic auth sufficient for self-hosted tool
+- Mobile native app — responsive web covers 80% of use cases
+- Built-in MQTT broker — Mosquitto/EMQX are mature
+- AI/LLM payload analysis — MQTTX Copilot owns this space
 
 ## Context
 
-- **Current stack:** Python 3.9+, Flask 2.0.1, Flask-SocketIO, Paho MQTT 1.5.1, SQLite3, vanilla JS, Tailwind CSS, Vis.js, Chart.js
-- **Deployment:** Docker + Gunicorn + Eventlet (single worker), Docker Hub at terdia07/mqttui
-- **Pain points:** No tests, vanilla JS frontend (~744 lines in one file), hardcoded limits, basic error handling, no exponential backoff, single-worker bottleneck, no structured logging
-- **Architecture:** Monolithic Flask app (app.py 524 lines, database.py 461 lines), thread-local SQLite, in-memory message list capped at 100
+- **Current stack:** Python 3.11, Flask 3.1.x, Flask-SocketIO + gevent, paho-mqtt 2.1.0, SQLite3 (WAL), Alpine.js 3.x, htmx 2.x, Tailwind CSS v4
+- **Deployment:** Docker + Gunicorn + gevent workers, Docker Hub at terdia07/mqttui
+- **Architecture:** Modular Flask monolith with blueprints, blinker event bus, subprocess-isolated plugins
+- **Tests:** 218+ pytest tests across 7 phases, all passing
 - **License:** MIT (Terry Osayawe, 2024)
-- **Current version:** v1.3.2
+- **Current version:** v2.0
 
 ## Constraints
 
-- **Tech stack:** Must remain Python backend — too much existing infrastructure to rewrite
-- **Backward compatibility:** Existing Docker users must be able to upgrade seamlessly
-- **MQTT protocol:** Must support both v3.1.1 and v5
-- **Database:** SQLite for single-node; migration path to PostgreSQL is a v2+ concern
-- **Performance:** Must handle high-throughput brokers (1000+ msg/sec) without UI lag
+- **Tech stack:** Python backend — proven in v2.0
+- **Backward compatibility:** Docker users can upgrade seamlessly (env vars preserved)
+- **MQTT protocol:** Supports both v3.1.1 and v5
+- **Database:** SQLite for single-node with WAL mode
+- **Performance:** Handles 1000+ msg/sec with Socket.IO batching
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Keep Python backend | Large existing codebase, Docker users, Flask ecosystem | — Pending |
-| Modernize frontend with component framework | Vanilla JS in single file is unmaintainable at scale | — Pending |
-| Add automation rules as core differentiator | "Agency" = the app acts autonomously, not just displays | — Pending |
-| Plugin architecture for extensibility | Community contributions, custom integrations | — Pending |
+| Keep Python backend | Large existing codebase, Docker users, Flask ecosystem | ✓ Good |
+| Alpine.js + htmx (not React/Vue) | Stays on Jinja2, no build pipeline, 29KB total | ✓ Good |
+| Custom rules engine (~300 lines) | No maintained MQTT ECA library; simpleeval too permissive | ✓ Good |
+| Subprocess plugin isolation | CVE-2025-68668 proved in-process plugins unsafe | ✓ Good |
+| gevent replacing eventlet | Eventlet unmaintained, incompatible with Python 3.10+ | ✓ Good |
+| Blinker event bus | Decouples MQTT from all consumers; already a Flask dependency | ✓ Good |
+| Structured JSON conditions (not eval) | Security — no code execution in condition evaluator | ✓ Good |
 
 ---
-*Last updated: 2026-03-24 after initialization*
+*Last updated: 2026-03-24 after v2.0 milestone*
