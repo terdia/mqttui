@@ -11,10 +11,10 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 - [x] **FOUND-01**: Application uses Flask application factory pattern with blueprints replacing monolithic app.py
 - [x] **FOUND-02**: Eventlet replaced with gevent for async mode; Python 3.11+ base image
-- [ ] **FOUND-03**: paho-mqtt upgraded to 2.x with CallbackAPIVersion.VERSION2 callbacks
+- [x] **FOUND-03**: paho-mqtt upgraded to 2.x with CallbackAPIVersion.VERSION2 callbacks
 - [x] **FOUND-04**: Flask upgraded to 3.1.x with compatible Werkzeug version
 - [x] **FOUND-05**: SQLite uses WAL mode with busy_timeout on all connections
-- [ ] **FOUND-06**: Internal blinker event bus wired (mqtt_message, rule_fired, alert_triggered signals)
+- [x] **FOUND-06**: Internal blinker event bus wired (mqtt_message, rule_fired, alert_triggered signals)
 - [ ] **FOUND-07**: Pytest infrastructure with test fixtures for app factory and MQTT mocking
 
 ### REST API
@@ -113,10 +113,10 @@ Deferred to future releases. Tracked but not in current roadmap.
 |-------------|-------|--------|
 | FOUND-01 | Phase 1 | Complete |
 | FOUND-02 | Phase 1 | Complete |
-| FOUND-03 | Phase 1 | Pending |
+| FOUND-03 | Phase 1 | Complete |
 | FOUND-04 | Phase 1 | Complete |
 | FOUND-05 | Phase 1 | Complete |
-| FOUND-06 | Phase 1 | Pending |
+| FOUND-06 | Phase 1 | Complete |
 | FOUND-07 | Phase 1 | Pending |
 | API-01 | Phase 2 | Pending |
 | API-02 | Phase 2 | Pending |
