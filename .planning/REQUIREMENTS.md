@@ -15,7 +15,7 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 - [x] **FOUND-04**: Flask upgraded to 3.1.x with compatible Werkzeug version
 - [x] **FOUND-05**: SQLite uses WAL mode with busy_timeout on all connections
 - [x] **FOUND-06**: Internal blinker event bus wired (mqtt_message, rule_fired, alert_triggered signals)
-- [ ] **FOUND-07**: Pytest infrastructure with test fixtures for app factory and MQTT mocking
+- [x] **FOUND-07**: Pytest infrastructure with test fixtures for app factory and MQTT mocking
 
 ### REST API
 
@@ -117,7 +117,7 @@ Deferred to future releases. Tracked but not in current roadmap.
 | FOUND-04 | Phase 1 | Complete |
 | FOUND-05 | Phase 1 | Complete |
 | FOUND-06 | Phase 1 | Complete |
-| FOUND-07 | Phase 1 | Pending |
+| FOUND-07 | Phase 1 | Complete |
 | API-01 | Phase 2 | Pending |
 | API-02 | Phase 2 | Pending |
 | API-03 | Phase 2 | Pending |
