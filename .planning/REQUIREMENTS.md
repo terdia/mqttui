@@ -44,11 +44,11 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 ### Alerting
 
-- [ ] **ALRT-01**: Rules can fire HTTP webhook to configurable URL with customizable payload template
-- [ ] **ALRT-02**: Webhook delivery includes retry with exponential backoff on failure
+- [x] **ALRT-01**: Rules can fire HTTP webhook to configurable URL with customizable payload template
+- [x] **ALRT-02**: Webhook delivery includes retry with exponential backoff on failure
 - [ ] **ALRT-03**: Alert deduplication/cooldown prevents alert storms on sustained conditions
 - [ ] **ALRT-04**: Alert history persisted and viewable in UI
-- [ ] **ALRT-05**: Webhook URLs validated against SSRF (block RFC-1918 private addresses)
+- [x] **ALRT-05**: Webhook URLs validated against SSRF (block RFC-1918 private addresses)
 
 ### Frontend
 
@@ -134,11 +134,11 @@ Deferred to future releases. Tracked but not in current roadmap.
 | RULE-06 | Phase 3 | Complete |
 | RULE-07 | Phase 3 | Complete |
 | RULE-08 | Phase 3 | Complete |
-| ALRT-01 | Phase 4 | Pending |
-| ALRT-02 | Phase 4 | Pending |
+| ALRT-01 | Phase 4 | Complete |
+| ALRT-02 | Phase 4 | Complete |
 | ALRT-03 | Phase 4 | Pending |
 | ALRT-04 | Phase 4 | Pending |
-| ALRT-05 | Phase 4 | Pending |
+| ALRT-05 | Phase 4 | Complete |
 | UI-01 | Phase 5 | Pending |
 | UI-02 | Phase 5 | Pending |
 | UI-03 | Phase 5 | Pending |
