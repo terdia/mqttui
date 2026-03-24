@@ -1,5 +1,6 @@
 """Tests for webhook delivery system: SSRF validation, webhook execution, retry logic."""
 
+import json
 import pytest
 import socket
 from unittest.mock import patch, MagicMock, call
@@ -183,3 +184,70 @@ class TestWebhookDelivery:
             # Should return immediately with submission confirmation
             assert result["success"] is True
             assert "submitted" in result["detail"].lower() or "delivery" in result["detail"].lower()
+
+
+# ---------------------------------------------------------------------------
+# SSRF Validation in Rule Endpoints
+# ---------------------------------------------------------------------------
+
+class TestSSRFEndpoints:
+    """Test SSRF validation in rule create/update API endpoints."""
+
+    def test_create_rule_ssrf_blocked(self, auth_client, app):
+        """POST /api/v1/rules/ with private webhook URL returns 400 SSRF_BLOCKED."""
+        with app.app_context():
+            resp = auth_client.post('/api/v1/rules/', json={
+                'name': 'SSRF Test Rule',
+                'trigger_topic': 'test/#',
+                'action': {
+                    'type': 'webhook',
+                    'url': 'http://192.168.1.1/hook',
+                },
+            })
+            assert resp.status_code == 400
+            data = resp.get_json()
+            assert data['error']['code'] == 'SSRF_BLOCKED'
+
+    @patch('socket.getaddrinfo', return_value=[
+        (socket.AF_INET, socket.SOCK_STREAM, 0, '', ('93.184.216.34', 443))
+    ])
+    def test_create_rule_ssrf_allowed(self, mock_dns, auth_client, app):
+        """POST /api/v1/rules/ with public webhook URL succeeds."""
+        with app.app_context():
+            resp = auth_client.post('/api/v1/rules/', json={
+                'name': 'Public Webhook Rule',
+                'trigger_topic': 'test/#',
+                'action': {
+                    'type': 'webhook',
+                    'url': 'https://hooks.example.com/hook',
+                },
+            })
+            assert resp.status_code == 201
+
+    def test_update_rule_ssrf_blocked(self, auth_client, app):
+        """PUT /api/v1/rules/<id> with private webhook URL returns 400."""
+        with app.app_context():
+            from mqttui.rules.models import Rule
+            from mqttui.extensions import sa
+            import json
+
+            # Create a rule first
+            rule = Rule(
+                name='Updatable Rule',
+                trigger_topic='test/#',
+                action_json=json.dumps({'type': 'log', 'severity': 'info'}),
+            )
+            sa.session.add(rule)
+            sa.session.commit()
+            rule_id = rule.id
+
+            # Try to update with private webhook URL
+            resp = auth_client.put(f'/api/v1/rules/{rule_id}', json={
+                'action': {
+                    'type': 'webhook',
+                    'url': 'http://10.0.0.1/hook',
+                },
+            })
+            assert resp.status_code == 400
+            data = resp.get_json()
+            assert data['error']['code'] == 'SSRF_BLOCKED'

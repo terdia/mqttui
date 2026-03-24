@@ -13,6 +13,7 @@ from mqttui.extensions import sa
 from mqttui.helpers import api_success, api_error
 from mqttui.rules.models import Rule
 from mqttui.rules.evaluator import evaluate, ConditionError
+from mqttui.rules.ssrf import is_ssrf_safe
 from mqttui.events import rule_changed
 
 rules_bp = Blueprint('rules', __name__, url_prefix='/api/v1/rules')
@@ -55,6 +56,13 @@ def create_rule():
     action = data.get('action')
     if not action or not isinstance(action, dict) or 'type' not in action:
         return api_error("action is required and must have a 'type' key", "VALIDATION_ERROR", 400)
+
+    # SSRF validation for webhook actions
+    if action.get('type') == 'webhook':
+        webhook_url = action.get('url', '')
+        safe, reason = is_ssrf_safe(webhook_url)
+        if not safe:
+            return api_error(f"Webhook URL rejected: {reason}", "SSRF_BLOCKED", 400)
 
     # Build rule
     rule = Rule(
@@ -110,6 +118,13 @@ def update_rule(rule_id):
     data = request.get_json(silent=True)
     if not data:
         return api_error("JSON body required", "VALIDATION_ERROR", 400)
+
+    # SSRF validation for webhook actions
+    if 'action' in data and isinstance(data['action'], dict) and data['action'].get('type') == 'webhook':
+        webhook_url = data['action'].get('url', '')
+        safe, reason = is_ssrf_safe(webhook_url)
+        if not safe:
+            return api_error(f"Webhook URL rejected: {reason}", "SSRF_BLOCKED", 400)
 
     # Update only fields present in request
     if 'name' in data:
