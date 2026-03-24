@@ -98,9 +98,34 @@ def _execute_log(action_dict, context):
 def _execute_webhook(action_dict, context):
     """Submit webhook delivery to thread pool for async execution.
 
+    Checks per-rule cooldown before submitting. If the rule is within its
+    cooldown window the webhook is suppressed and an AlertHistory record
+    is created with the incremented suppressed_count.
+
     Returns immediately with submission confirmation. Actual HTTP delivery
     happens in background thread with retry logic.
     """
+    from mqttui.rules.cooldown import cooldown_tracker
+
+    rule_id = context['rule_id']
+
+    # Check cooldown before submitting
+    if not cooldown_tracker.check(rule_id):
+        suppressed_count = cooldown_tracker.get_suppressed_count(rule_id)
+        cooldown_until = cooldown_tracker.get_cooldown_until(rule_id)
+
+        # Log suppressed alert to history
+        _log_suppressed_alert(
+            rule_id=rule_id,
+            rule_name=context['rule_name'],
+            topic=context['topic'],
+            url=action_dict.get('url', ''),
+            suppressed_count=suppressed_count,
+            cooldown_until=cooldown_until,
+        )
+
+        return {"success": True, "detail": f"Alert suppressed (cooldown), {suppressed_count} suppressed"}
+
     url = action_dict.get('url', '')
     payload_template = action_dict.get('payload_template')
 
@@ -247,6 +272,34 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
     )
     logger.error(f"Webhook failed after {retries} retries: rule={rule_name} url={url}")
     return {"success": False, "detail": f"Webhook failed after {retries} retries: {last_error}"}
+
+
+def _log_suppressed_alert(rule_id, rule_name, topic, url,
+                          suppressed_count, cooldown_until):
+    """Create an AlertHistory record for a suppressed (cooldown) alert."""
+    from mqttui.rules.models import AlertHistory
+    from mqttui.extensions import sa
+
+    try:
+        record = AlertHistory(
+            rule_id=rule_id,
+            rule_name=rule_name,
+            topic=topic,
+            severity='info',
+            message=f"Webhook to {url} suppressed (cooldown)",
+            fired_at=datetime.utcnow(),
+            webhook_url=url,
+            suppressed_count=suppressed_count,
+            cooldown_until=cooldown_until,
+        )
+        sa.session.add(record)
+        sa.session.commit()
+    except Exception as e:
+        logger.error(f"Failed to log suppressed alert: {e}")
+        try:
+            sa.session.rollback()
+        except Exception:
+            pass
 
 
 def _log_webhook_history(sa, rule_id, rule_name, topic, url,
