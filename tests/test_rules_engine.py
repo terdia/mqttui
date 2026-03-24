@@ -47,6 +47,28 @@ def _send_message(topic, payload_dict):
     )
 
 
+@pytest.fixture
+def engine(app):
+    """Create a RuleEngine connected to the event bus, disconnect after test."""
+    from mqttui.rules.engine import RuleEngine
+    eng = RuleEngine(app)
+    yield eng
+    eng.disconnect()
+
+
+@pytest.fixture
+def fire_log():
+    """Collect rule_fired signals. Auto-disconnects after test."""
+    fired = []
+
+    def _handler(sender, **kw):
+        fired.append(kw)
+
+    rule_fired.connect(_handler)
+    yield fired
+    rule_fired.disconnect(_handler)
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -54,15 +76,9 @@ def _send_message(topic, payload_dict):
 class TestLoopPrevention:
     """Messages with __source: mqttui-automation must be skipped."""
 
-    def test_loop_prevention_skips_automation_messages(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_loop_prevention_skips_automation_messages(self, app, engine, fire_log):
         _create_rule(app, trigger_topic='sensors/#')
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {
@@ -70,138 +86,100 @@ class TestLoopPrevention:
                 'temp': 35,
             })
 
-        assert len(fired) == 0, "Rule must not fire on automation messages"
+        assert len(fire_log) == 0, "Rule must not fire on automation messages"
 
 
 class TestTopicMatching:
     """Rules should match based on MQTT wildcard patterns."""
 
-    def test_wildcard_topic_matching(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_wildcard_topic_matching(self, app, engine, fire_log):
         _create_rule(app, trigger_topic='sensors/+/temp',
                      action_json=json.dumps({'type': 'log'}))
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {'temp': 25})
 
-        assert len(fired) == 1
-        assert fired[0]['topic'] == 'sensors/outdoor/temp'
+        assert len(fire_log) == 1
+        assert fire_log[0]['topic'] == 'sensors/outdoor/temp'
 
-    def test_non_matching_topic(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_non_matching_topic(self, app, engine, fire_log):
         _create_rule(app, trigger_topic='sensors/+/temp')
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('actuators/fan/speed', {'speed': 50})
 
-        assert len(fired) == 0
+        assert len(fire_log) == 0
 
 
 class TestConditionEvaluation:
     """Rules should evaluate conditions before firing."""
 
-    def test_matching_condition_fires(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_matching_condition_fires(self, app, engine, fire_log):
         _create_rule(
             app,
             trigger_topic='sensors/+/temp',
             condition_json=json.dumps({'path': 'temp', 'op': 'gt', 'value': 30}),
             action_json=json.dumps({'type': 'log'}),
         )
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {'temp': 35})
 
-        assert len(fired) == 1
+        assert len(fire_log) == 1
 
-    def test_non_matching_condition_does_not_fire(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_non_matching_condition_does_not_fire(self, app, engine, fire_log):
         _create_rule(
             app,
             trigger_topic='sensors/+/temp',
             condition_json=json.dumps({'path': 'temp', 'op': 'gt', 'value': 30}),
         )
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {'temp': 20})
 
-        assert len(fired) == 0
+        assert len(fire_log) == 0
 
 
 class TestDisabledRule:
     """Disabled rules must not be in cache and never fire."""
 
-    def test_disabled_rule_not_in_cache(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_disabled_rule_not_in_cache(self, app, engine, fire_log):
         _create_rule(app, trigger_topic='sensors/#', enabled=False)
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {'temp': 35})
 
-        assert len(fired) == 0
+        assert len(fire_log) == 0
 
 
 class TestPerRuleRateLimit:
     """Per-rule rate limit blocks excessive firings within the window."""
 
-    def test_rate_limit_blocks_excess(self, app):
-        from mqttui.rules.engine import RuleEngine
-
-        rule_id = _create_rule(
+    def test_rate_limit_blocks_excess(self, app, engine, fire_log):
+        _create_rule(
             app,
             trigger_topic='sensors/#',
             rate_limit_per_min=2,
             action_json=json.dumps({'type': 'log'}),
         )
-        engine = RuleEngine(app)
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             for _ in range(3):
                 _send_message('sensors/outdoor/temp', {'temp': 35})
 
-        assert len(fired) == 2, "Third firing should be rate-limited"
+        assert len(fire_log) == 2, "Third firing should be rate-limited"
 
 
 class TestGlobalCircuitBreaker:
     """Global circuit breaker blocks all firings after threshold."""
 
-    def test_global_limit_blocks_excess(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_global_limit_blocks_excess(self, app, engine, fire_log):
         # Create rules that will all fire
         for i in range(5):
             _create_rule(
@@ -212,18 +190,14 @@ class TestGlobalCircuitBreaker:
                 action_json=json.dumps({'type': 'log'}),
             )
 
-        engine = RuleEngine(app)
         engine._GLOBAL_LIMIT = 3  # Low limit for testing
         engine.connect()
-
-        fired = []
-        rule_fired.connect(lambda sender, **kw: fired.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {'temp': 35})
 
         # 5 rules match but global limit is 3
-        assert len(fired) == 3, "Global circuit breaker should limit to 3 firings"
+        assert len(fire_log) == 3, "Global circuit breaker should limit to 3 firings"
 
 
 class TestPublishActionSourceMarker:
@@ -269,26 +243,20 @@ class TestLogActionCreatesAlert:
 class TestRuleFiredSignal:
     """rule_fired signal must be emitted with correct kwargs."""
 
-    def test_signal_emitted_on_fire(self, app):
-        from mqttui.rules.engine import RuleEngine
-
+    def test_signal_emitted_on_fire(self, app, engine, fire_log):
         rule_id = _create_rule(
             app,
             name='Signal Test Rule',
             trigger_topic='sensors/#',
             action_json=json.dumps({'type': 'log'}),
         )
-        engine = RuleEngine(app)
         engine.connect()
-
-        signals_received = []
-        rule_fired.connect(lambda sender, **kw: signals_received.append(kw))
 
         with app.app_context():
             _send_message('sensors/outdoor/temp', {'temp': 25})
 
-        assert len(signals_received) == 1
-        sig = signals_received[0]
+        assert len(fire_log) == 1
+        sig = fire_log[0]
         assert sig['rule_id'] == rule_id
         assert sig['rule_name'] == 'Signal Test Rule'
         assert sig['topic'] == 'sensors/outdoor/temp'
