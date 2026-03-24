@@ -136,6 +136,7 @@ def create_app(config=None):
     from mqttui.routes.alerts import alerts_bp
     from mqttui.routes.metrics import metrics_bp
     from mqttui.routes.analytics import analytics_bp
+    from mqttui.routes.plugins import plugins_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
@@ -145,6 +146,7 @@ def create_app(config=None):
     app.register_blueprint(alerts_bp)
     app.register_blueprint(metrics_bp)
     app.register_blueprint(analytics_bp)
+    app.register_blueprint(plugins_bp)
 
     # Register auth blueprint and seed admin user
     from mqttui.auth import auth_bp, seed_admin_user

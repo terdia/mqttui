@@ -1,0 +1,49 @@
+<div>
+    {% if plugins %}
+    {% for plugin in plugins %}
+    <div class="bg-gray-800 rounded-lg p-4 mb-3">
+        <div class="flex justify-between items-center">
+            <div>
+                <span class="font-bold text-gray-200">{{ plugin.name }}</span>
+                {% if plugin.version %}
+                <span class="text-xs text-gray-400 ml-2">v{{ plugin.version }}</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center gap-2">
+                {% if plugin.enabled %}
+                <span class="px-2 py-0.5 text-xs rounded bg-green-600 text-white">Enabled</span>
+                <button class="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 rounded text-white"
+                        hx-post="/api/v1/plugins/{{ plugin.name }}/disable"
+                        hx-swap="none"
+                        hx-on::after-request="htmx.ajax('GET', '/partials/plugins', {target: '#plugins-panel', swap: 'innerHTML'})">
+                    Disable
+                </button>
+                {% else %}
+                <span class="px-2 py-0.5 text-xs rounded bg-gray-600 text-gray-300">Disabled</span>
+                <button class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 rounded text-white"
+                        hx-post="/api/v1/plugins/{{ plugin.name }}/enable"
+                        hx-swap="none"
+                        hx-on::after-request="htmx.ajax('GET', '/partials/plugins', {target: '#plugins-panel', swap: 'innerHTML'})">
+                    Enable
+                </button>
+                {% endif %}
+            </div>
+        </div>
+        {% if plugin.description %}
+        <p class="text-sm text-gray-400 mt-1">{{ plugin.description }}</p>
+        {% endif %}
+        <div class="text-xs text-gray-500 mt-1">
+            <span class="font-mono">{{ plugin.entry_point }}</span>
+            {% if plugin.installed_at %}
+            <span class="ml-2">Installed: {{ plugin.installed_at }}</span>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-center p-8 text-gray-400">
+        <p class="text-lg mb-2">No plugins installed</p>
+        <p class="text-sm">Install plugins via pip and restart MQTTUI to discover them.</p>
+    </div>
+    {% endif %}
+</div>
