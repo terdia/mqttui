@@ -255,11 +255,25 @@ def test_rule(rule_id):
     matched = topic_matches and condition_matches
     actions = [json.loads(rule.action_json)] if matched else []
 
+    # Build action_preview when rule matches
+    action_preview = []
+    if matched and actions:
+        for action in actions:
+            preview = _build_action_preview(action, {
+                'rule_id': rule.id,
+                'rule_name': rule.name,
+                'topic': topic,
+                'payload': payload_str,
+            })
+            if preview:
+                action_preview.append(preview)
+
     return api_success({
         "match": matched,
         "topic_match": topic_matches,
         "condition_match": condition_matches,
         "actions": actions,
+        "action_preview": action_preview,
     })
 
 
@@ -282,3 +296,49 @@ def _topic_matches(pattern, topic):
             return False
 
     return len(pattern_parts) == len(topic_parts)
+
+
+def _build_action_preview(action, context):
+    """Build a preview of what an action would produce.
+
+    Args:
+        action: Parsed action dict with 'type' key.
+        context: dict with rule_id, rule_name, topic, payload.
+
+    Returns:
+        Preview dict with type-specific fields, or None.
+    """
+    action_type = action.get('type')
+
+    if action_type == 'webhook':
+        from mqttui.rules.actions import _build_webhook_payload, _build_default_payload
+        template = action.get('payload_template')
+        if template:
+            payload = _build_webhook_payload(template, context)
+        else:
+            payload = _build_default_payload(context)
+        return {
+            'type': 'webhook',
+            'url': action.get('url', ''),
+            'payload': payload,
+        }
+
+    elif action_type == 'publish':
+        return {
+            'type': 'publish',
+            'topic': action.get('topic', ''),
+            'payload': action.get('payload', context.get('payload', '')),
+        }
+
+    elif action_type == 'log':
+        message = action.get(
+            'message',
+            f"Rule {context.get('rule_name', '')} fired on {context.get('topic', '')}",
+        )
+        return {
+            'type': 'log',
+            'severity': action.get('severity', 'info'),
+            'message': message,
+        }
+
+    return None

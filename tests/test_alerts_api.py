@@ -45,7 +45,7 @@ def _seed_rule(app, rule_id=None, action_type='webhook'):
         rule = Rule(
             name='test-rule',
             trigger_topic='sensors/+',
-            condition_json='{"operator": ">", "field": "temp", "value": 30}',
+            condition_json='{"op": "gt", "path": "temp", "value": 30}',
             action_json=json.dumps(action),
             enabled=True,
         )
