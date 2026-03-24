@@ -66,7 +66,13 @@ Plans:
   3. A rule exceeding its per-rule rate limit stops firing without crashing the application
   4. User can enable and disable a rule without deleting it, taking effect immediately without restart
   5. User can create a time-based rule that fires on a configurable schedule (e.g., every 5 minutes)
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 03-01-PLAN.md — Rule/AlertHistory models, condition evaluator with tests
+- [ ] 03-02-PLAN.md — RuleEngine class with cache, matcher, rate limiter, actions, loop detection
+- [ ] 03-03-PLAN.md — Rules REST API CRUD endpoints with enable/disable and dry-run
+- [ ] 03-04-PLAN.md — APScheduler time-based rules, hot-reload, create_app integration
 
 ### Phase 4: Alerting
 **Goal**: Rules can notify external systems via webhooks, with reliable delivery and protection against alert storms
@@ -124,7 +130,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 |-------|----------------|--------|-----------|
 | 1. Foundation | 1/3 | In Progress|  |
 | 2. API and Auth | 0/3 | Not started | - |
-| 3. Rules Engine | 0/? | Not started | - |
+| 3. Rules Engine | 0/4 | Not started | - |
 | 4. Alerting | 0/? | Not started | - |
 | 5. Frontend | 0/? | Not started | - |
 | 6. Analytics and Observability | 0/? | Not started | - |
