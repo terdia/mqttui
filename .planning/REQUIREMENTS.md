@@ -46,8 +46,8 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 - [x] **ALRT-01**: Rules can fire HTTP webhook to configurable URL with customizable payload template
 - [x] **ALRT-02**: Webhook delivery includes retry with exponential backoff on failure
-- [ ] **ALRT-03**: Alert deduplication/cooldown prevents alert storms on sustained conditions
-- [ ] **ALRT-04**: Alert history persisted and viewable in UI
+- [x] **ALRT-03**: Alert deduplication/cooldown prevents alert storms on sustained conditions
+- [x] **ALRT-04**: Alert history persisted and viewable in UI
 - [x] **ALRT-05**: Webhook URLs validated against SSRF (block RFC-1918 private addresses)
 
 ### Frontend
@@ -71,7 +71,7 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 - [ ] **UX-01**: Topic favorites/bookmarks for quick access to monitored topics
 - [ ] **UX-02**: Retained message indicator on messages displayed in UI
-- [ ] **UX-03**: Rule dry-run/preview sandbox to test expressions against sample payloads
+- [x] **UX-03**: Rule dry-run/preview sandbox to test expressions against sample payloads
 
 ### Plugin Architecture
 
@@ -136,8 +136,8 @@ Deferred to future releases. Tracked but not in current roadmap.
 | RULE-08 | Phase 3 | Complete |
 | ALRT-01 | Phase 4 | Complete |
 | ALRT-02 | Phase 4 | Complete |
-| ALRT-03 | Phase 4 | Pending |
-| ALRT-04 | Phase 4 | Pending |
+| ALRT-03 | Phase 4 | Complete |
+| ALRT-04 | Phase 4 | Complete |
 | ALRT-05 | Phase 4 | Complete |
 | UI-01 | Phase 5 | Pending |
 | UI-02 | Phase 5 | Pending |
@@ -152,7 +152,7 @@ Deferred to future releases. Tracked but not in current roadmap.
 | ANLYT-05 | Phase 6 | Pending |
 | UX-01 | Phase 6 | Pending |
 | UX-02 | Phase 6 | Pending |
-| UX-03 | Phase 4 | Pending |
+| UX-03 | Phase 4 | Complete |
 | PLUG-01 | Phase 7 | Pending |
 | PLUG-02 | Phase 7 | Pending |
 | PLUG-03 | Phase 7 | Pending |
