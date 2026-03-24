@@ -235,6 +235,11 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
                     rule_id=rule_id,
                     message=f"Webhook delivered to {url}",
                 )
+                try:
+                    from mqttui.routes.metrics import WEBHOOK_DELIVERIES
+                    WEBHOOK_DELIVERIES.labels(status='success').inc()
+                except Exception:
+                    pass
                 logger.info(f"Webhook delivered: rule={rule_name} url={url} status={response.status_code}")
                 return {"success": True, "detail": f"Webhook delivered (HTTP {response.status_code})"}
 
@@ -274,6 +279,11 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
         retry_count=retries,
         error_detail=last_error,
     )
+    try:
+        from mqttui.routes.metrics import WEBHOOK_DELIVERIES
+        WEBHOOK_DELIVERIES.labels(status='failure').inc()
+    except Exception:
+        pass
     logger.error(f"Webhook failed after {retries} retries: rule={rule_name} url={url}")
     return {"success": False, "detail": f"Webhook failed after {retries} retries: {last_error}"}
 

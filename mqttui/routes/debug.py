@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 import logging
 
+from mqttui.extensions import limiter
+
 bp = Blueprint('debug', __name__)
 
 
@@ -21,6 +23,7 @@ def after_request(response):
 
 
 @bp.route('/debug-bar')
+@limiter.exempt
 def get_debug_bar_data():
     from debug_bar import debug_bar
     try:

@@ -33,6 +33,12 @@ def prometheus_metrics():
     import mqttui.state as state
     MQTT_CONNECTED.set(1 if state.connection_count > 0 else 0)
     WEBSOCKET_CLIENTS.set(state.active_websockets)
+    # Update active rules gauge from database
+    try:
+        from mqttui.rules.models import Rule
+        ACTIVE_RULES.set(Rule.query.filter_by(enabled=True).count())
+    except Exception:
+        pass
     return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
 
 

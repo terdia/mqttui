@@ -102,9 +102,10 @@ function messageListComponent() {
             const topic = Alpine.store('mqtt').selectedTopic;
             if (topic && topic !== 'all') params.append('topic', topic);
             try {
-                const resp = await fetch(`/api/messages?${params}`);
+                const resp = await fetch(`/api/v1/messages?${params}`);
                 const data = await resp.json();
-                this.messages = data.messages || [];
+                const payload = data.data || data;
+                this.messages = payload.messages || [];
             } catch (e) {
                 console.error('Error loading messages:', e);
             }
@@ -509,7 +510,7 @@ function loadFilteredMessages(customFilters = {}) {
         if (value) queryParams.append(key, value);
     });
 
-    fetch(`/api/messages?${queryParams.toString()}`)
+    fetch(`/api/v1/messages?${queryParams.toString()}`)
         .then(response => response.json())
         .then(data => {
             // For Alpine-driven message lists, dispatch an event
@@ -578,13 +579,14 @@ function setupAdvancedSearchHandlers() {
                 return;
             }
 
-            fetch(`/api/filter-presets/${encodeURIComponent(presetName)}/use`, {
+            fetch(`/api/v1/filter-presets/${encodeURIComponent(presetName)}/use`, {
                 method: 'POST'
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    const filters = data.filters;
+                const inner = data.data || data;
+                if (data.status === 'success' || inner.filters) {
+                    const filters = inner.filters;
                     const contentSearch = document.getElementById('content-search');
                     if (contentSearch) contentSearch.value = filters.content || '';
                     const regexTopic = document.getElementById('regex-topic');
@@ -643,7 +645,7 @@ function setupAdvancedSearchHandlers() {
                 return;
             }
 
-            fetch('/api/filter-presets', {
+            fetch('/api/v1/filter-presets', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -654,11 +656,11 @@ function setupAdvancedSearchHandlers() {
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
+                if (data.status === 'success') {
                     alert('Filter preset saved successfully!');
                     loadFilterPresets();
                 } else {
-                    alert('Error saving preset: ' + data.error);
+                    alert('Error saving preset: ' + (data.error?.message || data.error));
                 }
             })
             .catch(error => {
@@ -736,7 +738,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function loadFilterPresets() {
-    fetch('/api/filter-presets')
+    fetch('/api/v1/filter-presets')
         .then(response => response.json())
         .then(data => {
             const presetSelect = document.getElementById('preset-select');
@@ -744,7 +746,8 @@ function loadFilterPresets() {
 
             presetSelect.innerHTML = '<option value="">Select a preset...</option>';
 
-            data.presets.forEach(preset => {
+            const presets = (data.data || data).presets || [];
+            presets.forEach(preset => {
                 const option = document.createElement('option');
                 option.value = preset.name;
                 option.textContent = `${preset.name}${preset.description ? ' - ' + preset.description : ''}`;

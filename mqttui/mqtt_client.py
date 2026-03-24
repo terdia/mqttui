@@ -125,6 +125,19 @@ def init_mqtt(app):
         if len(state.messages) > 100:
             state.messages.pop(0)
 
+        # Record to debug bar
+        try:
+            from debug_bar import debug_bar
+            debug_bar.record('mqtt', 'last_topic', msg.topic)
+            debug_bar.record('mqtt', 'last_payload', payload[:200])
+            debug_bar.record('mqtt', 'last_qos', msg.qos)
+            debug_bar.record('mqtt', 'last_retain', msg.retain)
+            debug_bar.record('mqtt', 'last_timestamp', timestamp.isoformat())
+            debug_bar.record('mqtt', 'connection_status', 'Connected')
+            debug_bar.record('mqtt', 'broker', f"{broker}:{port}")
+        except Exception:
+            pass
+
         # Fire the event bus signal -- all consumers subscribe to this
         mqtt_message_received.send(
             'mqtt_client',
