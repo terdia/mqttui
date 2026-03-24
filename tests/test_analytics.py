@@ -141,3 +141,24 @@ class TestAnalyticsAPI:
         resp = client.get('/api/v1/analytics/topics')
         # Flask-Login redirects to login page (302) or returns 401
         assert resp.status_code in (302, 401)
+
+
+class TestAnalyticsPartial:
+    """Tests for analytics partial template route."""
+
+    def test_analytics_partial_returns_200(self, auth_client):
+        """GET /partials/analytics returns 200 with analyticsWidget component."""
+        resp = auth_client.get('/partials/analytics')
+        assert resp.status_code == 200
+        assert b'analyticsWidget' in resp.data
+
+    def test_analytics_partial_contains_rate_per_min(self, auth_client):
+        """Analytics partial contains rate_per_min display binding."""
+        resp = auth_client.get('/partials/analytics')
+        assert resp.status_code == 200
+        assert b'rate_per_min' in resp.data
+
+    def test_analytics_partial_requires_auth(self, client):
+        """Unauthenticated request to analytics partial is rejected."""
+        resp = client.get('/partials/analytics')
+        assert resp.status_code in (302, 401)

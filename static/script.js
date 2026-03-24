@@ -27,6 +27,7 @@ function mqttuiApp() {
         activeTab: 'dashboard',
         alertsLoaded: false,
         rulesLoaded: false,
+        analyticsLoaded: false,
         init() {
             // Initialize Chart.js and Vis.js network
             initChart();
