@@ -20,14 +20,28 @@ class Rule(sa.Model):
     created_at = sa.Column(sa.DateTime, server_default=sa.func.now())
     updated_at = sa.Column(sa.DateTime, server_default=sa.func.now(), onupdate=datetime.utcnow)
 
+    @property
+    def action(self):
+        try:
+            return json.loads(self.action_json) if self.action_json else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
+    @property
+    def condition(self):
+        try:
+            return json.loads(self.condition_json) if self.condition_json else {}
+        except (json.JSONDecodeError, TypeError):
+            return {}
+
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'description': self.description,
             'trigger_topic': self.trigger_topic,
-            'condition': json.loads(self.condition_json) if self.condition_json else {},
-            'action': json.loads(self.action_json) if self.action_json else {},
+            'condition': self.condition,
+            'action': self.action,
             'enabled': self.enabled,
             'rate_limit_per_min': self.rate_limit_per_min,
             'schedule_cron': self.schedule_cron,
