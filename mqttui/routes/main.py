@@ -14,11 +14,10 @@ def index():
 
 @bp.route('/publish', methods=['POST'])
 def publish_message():
-    from mqttui.mqtt import mqtt_client, debug_bar
+    from mqttui.mqtt_client import publish as mqtt_publish
     topic = request.form['topic']
     message = request.form['message']
-    mqtt_client.publish(topic, message)
-    debug_bar.record('mqtt', 'last_publish', {'topic': topic, 'message': message})
+    mqtt_publish(topic, message)
     return jsonify(success=True)
 
 

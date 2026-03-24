@@ -5,6 +5,34 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask
 
 from mqttui.extensions import socketio
+from mqttui.events import mqtt_message_received
+
+
+def _on_mqtt_message(sender, **kwargs):
+    """Forward MQTT messages to WebSocket clients and persist to database."""
+    topic = kwargs['topic']
+    payload = kwargs['payload']
+    timestamp = kwargs['timestamp']
+    qos = kwargs.get('qos', 0)
+    retain = kwargs.get('retain', False)
+
+    # Emit to connected browsers
+    socketio.emit('mqtt_message', {
+        'topic': topic,
+        'payload': payload,
+        'timestamp': timestamp.isoformat(),
+    })
+
+    # Persist to database
+    import mqttui.extensions as ext
+    if ext.db:
+        try:
+            ext.db.store_message(
+                topic=topic, payload=payload,
+                timestamp=timestamp, qos=qos, retain=retain,
+            )
+        except Exception as e:
+            logging.getLogger(__name__).error(f"Failed to store message: {e}")
 
 
 def create_app(config=None):
@@ -83,5 +111,12 @@ def create_app(config=None):
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(debug_bp)
+
+    # Initialize MQTT client (paho-mqtt 2.x with event bus)
+    from mqttui.mqtt_client import init_mqtt
+    init_mqtt(app)
+
+    # Wire event bus: forward MQTT messages to SocketIO and database
+    mqtt_message_received.connect(_on_mqtt_message)
 
     return app
