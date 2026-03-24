@@ -84,7 +84,11 @@ Plans:
   3. A sustained condition that would generate repeated alerts is deduplicated — only one alert fires during the cooldown window
   4. Alert history is persisted and visible in the UI
   5. A webhook URL pointing to a private RFC-1918 address is rejected with a clear error at rule creation time
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — Webhook delivery with httpx, retry/backoff, SSRF validation, AlertHistory extension
+- [ ] 04-02-PLAN.md — Alert cooldown/dedup, alerts REST API, dry-run enhancement
 
 ### Phase 5: Frontend
 **Goal**: The user interface is maintainable, component-based, and handles high-throughput brokers without flooding the browser
@@ -131,7 +135,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 1. Foundation | 1/3 | In Progress|  |
 | 2. API and Auth | 0/3 | Not started | - |
 | 3. Rules Engine | 4/4 | Complete   | 2026-03-24 |
-| 4. Alerting | 0/? | Not started | - |
+| 4. Alerting | 0/2 | Not started | - |
 | 5. Frontend | 0/? | Not started | - |
 | 6. Analytics and Observability | 0/? | Not started | - |
 | 7. Plugin Architecture | 0/? | Not started | - |
