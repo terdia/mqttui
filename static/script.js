@@ -438,16 +438,7 @@ function updateMessageList(message) {
 }
 
 function updateStats() {
-    fetch('/stats')
-        .then(response => response.json())
-        .then(data => {
-            // Stats are now handled by Alpine.js statsComponent
-            // This function updates the Alpine store for any consumers
-            if (window.Alpine && Alpine.store('mqtt')) {
-                // Store keeps a running count; the statsComponent fetches its own
-            }
-        })
-        .catch(e => console.error('Error updating stats:', e));
+    // Stats are now handled by Alpine.js statsComponent — this is a no-op
 }
 
 function updateTopicFilter(newTopic) {

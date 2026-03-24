@@ -3,6 +3,7 @@ from flask_login import login_required
 import logging
 
 from mqttui import __version__
+from mqttui.extensions import limiter
 from mqttui import state
 
 bp = Blueprint('main', __name__)
@@ -25,6 +26,7 @@ def publish_message():
 
 
 @bp.route('/stats')
+@limiter.exempt
 def get_stats():
     return jsonify({
         'connection_count': state.connection_count,
@@ -35,6 +37,7 @@ def get_stats():
 
 
 @bp.route('/version')
+@limiter.exempt
 def get_version():
     return jsonify({'version': __version__})
 
