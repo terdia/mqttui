@@ -4,12 +4,14 @@ All endpoints return JSON envelope: {"status": "success"|"error", "data": ..., "
 """
 
 from flask import Blueprint, request, jsonify, current_app
+from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import logging
 
 from mqttui import __version__
 from mqttui import state
 from mqttui import extensions as ext
+from mqttui.extensions import sa, limiter
 from mqttui.helpers import api_success, api_error
 
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
@@ -21,6 +23,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 @api_v1_bp.route('/messages')
+@login_required
 def get_messages():
     """Get paginated message history with filtering.
     ---
@@ -121,6 +124,7 @@ def get_messages():
 # ---------------------------------------------------------------------------
 
 @api_v1_bp.route('/topics')
+@login_required
 def get_topics():
     """Get list of all topics with statistics.
     ---
@@ -147,6 +151,7 @@ def get_topics():
 # ---------------------------------------------------------------------------
 
 @api_v1_bp.route('/database/stats')
+@login_required
 def get_database_stats():
     """Get database size and statistics.
     ---
@@ -173,6 +178,7 @@ def get_database_stats():
 
 
 @api_v1_bp.route('/database/cleanup', methods=['POST'])
+@login_required
 def cleanup_database():
     """Clean up old database records.
     ---
@@ -209,6 +215,7 @@ def cleanup_database():
 # ---------------------------------------------------------------------------
 
 @api_v1_bp.route('/filter-presets')
+@login_required
 def get_filter_presets():
     """Get all saved filter presets.
     ---
@@ -230,6 +237,7 @@ def get_filter_presets():
 
 
 @api_v1_bp.route('/filter-presets', methods=['POST'])
+@login_required
 def save_filter_preset():
     """Save a new filter preset.
     ---
@@ -275,6 +283,7 @@ def save_filter_preset():
 
 
 @api_v1_bp.route('/filter-presets/<name>', methods=['DELETE'])
+@login_required
 def delete_filter_preset(name):
     """Delete a filter preset.
     ---
@@ -307,6 +316,7 @@ def delete_filter_preset(name):
 
 
 @api_v1_bp.route('/filter-presets/<name>/use', methods=['POST'])
+@login_required
 def use_filter_preset(name):
     """Load and use a filter preset.
     ---
@@ -343,6 +353,8 @@ def use_filter_preset(name):
 # ---------------------------------------------------------------------------
 
 @api_v1_bp.route('/publish', methods=['POST'])
+@login_required
+@limiter.limit("30/minute")
 def publish_message():
     """Publish an MQTT message (JSON API).
     ---
@@ -388,6 +400,7 @@ def publish_message():
 # ---------------------------------------------------------------------------
 
 @api_v1_bp.route('/stats')
+@login_required
 def get_stats():
     """Get application statistics.
     ---
@@ -461,6 +474,54 @@ def openapi_spec():
                 if view:
                     spec.path(view=view, app=current_app)
     return jsonify(spec.to_dict())
+
+
+# ---------------------------------------------------------------------------
+# Token CRUD
+# ---------------------------------------------------------------------------
+
+@api_v1_bp.route('/auth/token', methods=['GET'])
+@login_required
+def get_token():
+    """Get current user's API token.
+    ---
+    get:
+      summary: Get API token
+      security: [{session: []}, {apiKey: []}]
+      responses:
+        200: {description: Current token}
+    """
+    return api_success({"api_token": current_user.api_token})
+
+
+@api_v1_bp.route('/auth/token', methods=['POST'])
+@login_required
+def regenerate_token():
+    """Regenerate API token.
+    ---
+    post:
+      summary: Regenerate API token
+      responses:
+        200: {description: New token generated}
+    """
+    token = current_user.generate_api_token()
+    sa.session.commit()
+    return api_success({"api_token": token})
+
+
+@api_v1_bp.route('/auth/token', methods=['DELETE'])
+@login_required
+def revoke_token():
+    """Revoke API token.
+    ---
+    delete:
+      summary: Revoke API token
+      responses:
+        200: {description: Token revoked}
+    """
+    current_user.api_token = None
+    sa.session.commit()
+    return api_success({"message": "API token revoked"})
 
 
 # ---------------------------------------------------------------------------

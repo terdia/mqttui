@@ -12,6 +12,16 @@ logger = logging.getLogger(__name__)
 auth_bp = Blueprint('auth', __name__)
 
 
+@auth_bp.before_app_request
+def load_user_from_api_key():
+    """Check X-API-Key header before session auth."""
+    api_key = request.headers.get('X-API-Key')
+    if api_key:
+        user = User.query.filter_by(api_token=api_key).first()
+        if user and user.is_active:
+            login_user(user)
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return sa.session.get(User, int(user_id))

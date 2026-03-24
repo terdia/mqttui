@@ -108,6 +108,12 @@ def create_app(config=None):
     sa.init_app(app)
     login_manager.init_app(app)
 
+    # Initialize rate limiter
+    from mqttui.extensions import limiter
+    rate_limit = os.getenv('MQTTUI_RATE_LIMIT', '30/minute')
+    app.config['RATELIMIT_DEFAULT'] = rate_limit
+    limiter.init_app(app)
+
     with app.app_context():
         from mqttui.models import User  # noqa: F811
         sa.create_all()
