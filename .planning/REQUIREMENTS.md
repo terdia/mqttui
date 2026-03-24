@@ -19,17 +19,17 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 ### REST API
 
-- [ ] **API-01**: All existing endpoints formalized under versioned /api/v1/ prefix with OpenAPI documentation
-- [ ] **API-02**: API responses follow consistent JSON envelope format with status, data, and error fields
+- [x] **API-01**: All existing endpoints formalized under versioned /api/v1/ prefix with OpenAPI documentation
+- [x] **API-02**: API responses follow consistent JSON envelope format with status, data, and error fields
 - [ ] **API-03**: Rate limiting on publish endpoint (configurable per-IP limit)
-- [ ] **API-04**: CORS support for cross-origin API consumers
+- [x] **API-04**: CORS support for cross-origin API consumers
 
 ### Authentication
 
-- [ ] **AUTH-01**: User can log in with username/password and receive session token
-- [ ] **AUTH-02**: Protected endpoints require valid session token
+- [x] **AUTH-01**: User can log in with username/password and receive session token
+- [x] **AUTH-02**: Protected endpoints require valid session token
 - [ ] **AUTH-03**: User can generate API tokens for programmatic access
-- [ ] **AUTH-04**: Application refuses to start with default/insecure SECRET_KEY in production mode
+- [x] **AUTH-04**: Application refuses to start with default/insecure SECRET_KEY in production mode
 
 ### Rules Engine
 
@@ -118,14 +118,14 @@ Deferred to future releases. Tracked but not in current roadmap.
 | FOUND-05 | Phase 1 | Complete |
 | FOUND-06 | Phase 1 | Complete |
 | FOUND-07 | Phase 1 | Complete |
-| API-01 | Phase 2 | Pending |
-| API-02 | Phase 2 | Pending |
+| API-01 | Phase 2 | Complete |
+| API-02 | Phase 2 | Complete |
 | API-03 | Phase 2 | Pending |
-| API-04 | Phase 2 | Pending |
-| AUTH-01 | Phase 2 | Pending |
-| AUTH-02 | Phase 2 | Pending |
+| API-04 | Phase 2 | Complete |
+| AUTH-01 | Phase 2 | Complete |
+| AUTH-02 | Phase 2 | Complete |
 | AUTH-03 | Phase 2 | Pending |
-| AUTH-04 | Phase 2 | Pending |
+| AUTH-04 | Phase 2 | Complete |
 | RULE-01 | Phase 3 | Pending |
 | RULE-02 | Phase 3 | Pending |
 | RULE-03 | Phase 3 | Pending |

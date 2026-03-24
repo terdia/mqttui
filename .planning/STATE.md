@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-03-PLAN.md
-last_updated: "2026-03-24T08:40:44.621Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-24T08:54:01.099Z"
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 5
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Users can monitor, interact with, and automate their MQTT infrastructure from a single, intelligent web interface
-**Current focus:** Phase 01 — Foundation (COMPLETE)
+**Current focus:** Phase 02 — API and Auth
 
 ## Current Position
 
-Phase: 01 (Foundation) — COMPLETE
-Plan: 3 of 3 (all complete)
+Phase: 02 (API and Auth) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -48,6 +48,8 @@ Plan: 3 of 3 (all complete)
 *Updated after each plan completion*
 | Phase 01-02 P02 | 2min | 2 tasks | 5 files |
 | Phase 01-03 P03 | 1min | 1 task | 7 files |
+| Phase 02-02 P02 | 2min | 2 tasks | 5 files |
+| Phase 02-01 P01 | 3min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -68,6 +70,11 @@ Recent decisions affecting current work:
 - [01-03]: Used patch('mqttui.mqtt_client.init_mqtt') to prevent broker connections in tests
 - [01-03]: Used tmp_path fixture for database isolation -- each test gets fresh SQLite
 - [01-03]: Chose gevent async_mode assertion to lock in SocketIO config
+- [Phase 02-02]: Kept legacy /api/ routes for backward compat, TODO for Phase 5 removal
+- [Phase 02-02]: Used apispec with FlaskPlugin for lightweight OpenAPI generation from docstrings
+- [Phase 02-01]: Used pbkdf2:sha256 hashing for Python 3.9 compat instead of scrypt
+- [Phase 02-01]: Named SQLAlchemy instance sa to avoid collision with existing db (MessageDatabase)
+- [Phase 02-01]: Separate SQLite database (mqttui_users.db) for user auth data
 
 ### Pending Todos
 
@@ -82,6 +89,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T08:36:11Z
-Stopped at: Completed 01-03-PLAN.md
+Last session: 2026-03-24T08:54:01.097Z
+Stopped at: Completed 02-01-PLAN.md
 Resume file: None
