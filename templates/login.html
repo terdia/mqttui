@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTTUI - Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md">
+        <div class="bg-gray-800 rounded-lg shadow-lg p-8">
+            <h1 class="text-3xl font-bold text-center mb-8">MQTTUI</h1>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="mb-4 p-3 rounded bg-red-900 text-red-200 text-sm">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form action="/login" method="POST">
+                <div class="mb-4">
+                    <label for="username" class="block text-sm font-medium text-gray-300 mb-2">Username</label>
+                    <input type="text" id="username" name="username" required
+                           class="w-full px-4 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500"
+                           placeholder="Enter username" autocomplete="username">
+                </div>
+
+                <div class="mb-6">
+                    <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-4 py-2 rounded bg-gray-700 border border-gray-600 text-white focus:outline-none focus:border-blue-500"
+                           placeholder="Enter password" autocomplete="current-password">
+                </div>
+
+                <button type="submit"
+                        class="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 rounded font-medium transition duration-200">
+                    Sign In
+                </button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

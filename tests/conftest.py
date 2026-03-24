@@ -15,6 +15,8 @@ def app(tmp_path):
         app = create_app({
             'TESTING': True,
             'SECRET_KEY': 'test-secret-key',
+            'SQLALCHEMY_DATABASE_URI': f'sqlite:///{tmp_path}/test_users.db',
+            'SQLALCHEMY_TRACK_MODIFICATIONS': False,
             'DB_ENABLED': True,
             'DB_PATH': db_path,
             'DB_MAX_MESSAGES': 1000,

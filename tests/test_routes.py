@@ -1,4 +1,14 @@
-def test_index_returns_200(client):
+def test_index_redirects_unauthenticated(client):
+    """Unauthenticated access to / should redirect to /login."""
+    response = client.get('/')
+    assert response.status_code == 302
+    assert '/login' in response.headers['Location']
+
+
+def test_index_returns_200_authenticated(client, app):
+    """Authenticated access to / should return 200."""
+    # Login first
+    client.post('/login', data={'username': 'admin', 'password': 'admin'})
     response = client.get('/')
     assert response.status_code == 200
 

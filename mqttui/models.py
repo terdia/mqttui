@@ -15,7 +15,7 @@ class User(UserMixin, sa.Model):
     created_at = sa.Column(sa.DateTime, server_default=sa.func.now())
 
     def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
