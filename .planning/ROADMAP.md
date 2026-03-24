@@ -32,7 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. MQTT messages are received and stored correctly after paho-mqtt 2.x callback migration
   4. SQLite database opens with WAL mode and busy_timeout on every connection
   5. `pytest` suite runs with at least app factory and MQTT mock fixtures green
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — App factory, Flask 3.1.x, gevent migration, SQLite WAL
+- [ ] 01-02-PLAN.md — paho-mqtt 2.x callback migration, blinker event bus
+- [ ] 01-03-PLAN.md — Pytest infrastructure with fixtures and test suite
 
 ### Phase 2: API and Auth
 **Goal**: Users can securely authenticate and all API consumers have a stable, documented contract
@@ -108,11 +113,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/? | Not started | - |
+| 1. Foundation | 0/3 | Planning complete | - |
 | 2. API and Auth | 0/? | Not started | - |
 | 3. Rules Engine | 0/? | Not started | - |
 | 4. Alerting | 0/? | Not started | - |
