@@ -27,8 +27,8 @@ esac
 
 if [ "$DEBUG" = "True" ] || [ "$DEBUG" = "1" ] || [ "$DEBUG" = "true" ]; then
     echo "Running in DEBUG mode with log level: $LOG_LEVEL"
-    exec python -c "from app import app, socketio; socketio.run(app, host='0.0.0.0', port=$PORT, debug=True)"
+    exec python wsgi.py
 else
     echo "Running in PRODUCTION mode with log level: $LOG_LEVEL"
-    exec gunicorn --log-level "$LOG_LEVEL" --worker-class eventlet -w 1 -b "0.0.0.0:$PORT" app:app
+    exec gunicorn --log-level "$LOG_LEVEL" --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker -w 1 -b "0.0.0.0:$PORT" "wsgi:app"
 fi
