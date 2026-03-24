@@ -36,9 +36,9 @@ echo -e "${YELLOW}[1/7] Authenticating...${NC}"
 COOKIE_JAR="/tmp/mqttui-demo-cookies.txt"
 LOGIN_RESP=$(curl -s -c "$COOKIE_JAR" -X POST "http://localhost:8088/login" \
     -d "username=admin&password=admin" \
-    -L -o /dev/null -w "%{http_code}")
+    -o /dev/null -w "%{http_code}")
 
-if [ "$LOGIN_RESP" != "200" ]; then
+if [ "$LOGIN_RESP" != "302" ] && [ "$LOGIN_RESP" != "200" ]; then
     echo "  Login failed (HTTP $LOGIN_RESP). Check MQTTUI_ADMIN_USER/PASSWORD."
     exit 1
 fi
