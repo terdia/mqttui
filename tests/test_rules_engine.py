@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock, call
 
 import pytest
 
-from mqttui.events import mqtt_message_received, rule_fired
+from mqttui.events import mqtt_message_received, rule_fired, rule_changed
 
 
 # ---------------------------------------------------------------------------
@@ -49,9 +49,12 @@ def _send_message(topic, payload_dict):
 
 @pytest.fixture
 def engine(app):
-    """Create a RuleEngine connected to the event bus, disconnect after test."""
+    """Create a RuleEngine with mocked scheduler, disconnect after test."""
     from mqttui.rules.engine import RuleEngine
     eng = RuleEngine(app)
+    # Prevent real GeventScheduler from starting in tests
+    eng._scheduler = MagicMock()
+    eng._scheduler.get_jobs.return_value = []
     yield eng
     eng.disconnect()
 
@@ -260,3 +263,105 @@ class TestRuleFiredSignal:
         assert sig['rule_id'] == rule_id
         assert sig['rule_name'] == 'Signal Test Rule'
         assert sig['topic'] == 'sensors/outdoor/temp'
+
+
+# ---------------------------------------------------------------------------
+# Scheduler & Hot-Reload Tests (Plan 03-04)
+# ---------------------------------------------------------------------------
+
+class TestHotReload:
+    """rule_changed signal should trigger cache reload."""
+
+    def test_hot_reload_on_rule_changed(self, app, engine):
+        """Cache updates when rule_changed signal fires."""
+        rule_id = _create_rule(app, trigger_topic='sensors/#')
+        engine.connect()
+
+        # Rule should be in cache
+        assert rule_id in engine._rules
+
+        # Delete the rule from DB
+        with app.app_context():
+            from mqttui.rules.models import Rule
+            from mqttui.extensions import sa
+            rule = sa.session.get(Rule, rule_id)
+            sa.session.delete(rule)
+            sa.session.commit()
+
+        # Fire rule_changed signal -- should trigger cache reload
+        rule_changed.send('test', action='deleted', rule_id=rule_id)
+
+        # Rule should no longer be in cache
+        assert rule_id not in engine._rules
+
+
+class TestCronScheduleSync:
+    """sync_scheduled_jobs should manage APScheduler jobs for cron rules."""
+
+    def test_cron_schedule_sync(self, app, engine):
+        """A rule with schedule_cron gets a scheduler job with replace_existing."""
+        rule_id = _create_rule(
+            app,
+            trigger_topic='sensors/#',
+            schedule_cron='*/5 * * * *',
+        )
+        engine.connect()
+
+        # Verify add_job was called with correct arguments
+        engine._scheduler.add_job.assert_called()
+        call_kwargs = engine._scheduler.add_job.call_args
+        assert call_kwargs[1]['replace_existing'] is True
+        assert call_kwargs[1]['id'] == f'rule_{rule_id}'
+
+    def test_removed_rule_job_cleaned_up(self, app, engine):
+        """Jobs for deleted rules are removed from scheduler."""
+        # Simulate a stale job from a previously deleted rule
+        stale_job = MagicMock()
+        stale_job.id = 'rule_999'
+        engine._scheduler.get_jobs.return_value = [stale_job]
+
+        # Create a rule without cron (no new job expected)
+        _create_rule(app, trigger_topic='sensors/#')
+        engine.connect()
+
+        # Stale job should be removed
+        engine._scheduler.remove_job.assert_any_call('rule_999')
+
+
+class TestFireScheduledRule:
+    """fire_scheduled_rule should execute the action and log to AlertHistory."""
+
+    def test_fire_scheduled_rule(self, app, engine):
+        """Calling fire_scheduled_rule creates an AlertHistory record."""
+        from mqttui.rules.models import AlertHistory
+
+        rule_id = _create_rule(
+            app,
+            name='Heartbeat Rule',
+            trigger_topic='__scheduled__',
+            action_json=json.dumps({'type': 'log', 'message': 'heartbeat'}),
+        )
+        engine.connect()
+
+        with app.app_context():
+            engine.fire_scheduled_rule(rule_id)
+
+            alerts = AlertHistory.query.all()
+            assert len(alerts) == 1
+            assert alerts[0].message == 'heartbeat'
+            assert alerts[0].rule_name == 'Heartbeat Rule'
+
+    def test_fire_scheduled_rule_missing_id(self, app, engine):
+        """fire_scheduled_rule silently returns for non-existent rule."""
+        engine.connect()
+        with app.app_context():
+            # Should not raise
+            engine.fire_scheduled_rule(99999)
+
+
+class TestAppCreatesRuleEngine:
+    """create_app should register the rules blueprint."""
+
+    def test_rules_blueprint_registered(self, app):
+        """The rules blueprint should be in app.blueprints."""
+        assert 'rules' in app.blueprints

@@ -158,4 +158,9 @@ def create_app(config=None):
     # Wire event bus: forward MQTT messages to SocketIO and database
     mqtt_message_received.connect(_on_mqtt_message)
 
+    # Initialize rules engine (Phase 3)
+    from mqttui.rules.engine import RuleEngine
+    rule_engine = RuleEngine(app=app)
+    rule_engine.connect()
+
     return app
