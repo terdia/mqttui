@@ -12,6 +12,14 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- htmx 2.x -->
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <!-- Tell Alpine to initialize new x-data elements after htmx swaps -->
+    <script>
+      document.addEventListener('htmx:afterSwap', function(event) {
+        if (window.Alpine) {
+          Alpine.initTree(event.detail.target);
+        }
+      });
+    </script>
     <!-- Socket.IO -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     {% block head %}{% endblock %}
