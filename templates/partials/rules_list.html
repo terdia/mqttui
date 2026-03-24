@@ -1,0 +1,21 @@
+<div id="rules-list">
+  <div class="flex justify-between items-center mb-4">
+    <h3 class="text-lg font-semibold">Automation Rules</h3>
+    <button hx-get="/partials/rules/form"
+            hx-target="#rule-form-container"
+            hx-swap="innerHTML"
+            class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">
+      + New Rule
+    </button>
+  </div>
+  <div id="rule-form-container"></div>
+  {% if rules %}
+  <div class="space-y-2">
+    {% for rule in rules %}
+      {% include 'partials/rule_row.html' %}
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="text-gray-400 text-center py-4">No rules defined yet. Create one to get started.</p>
+  {% endif %}
+</div>

@@ -1,0 +1,55 @@
+<div id="rule-{{ rule.id }}" class="bg-gray-700 rounded p-3 border-l-4 {{ 'border-green-500' if rule.enabled else 'border-gray-500' }}">
+  <div class="flex justify-between items-start">
+    <div class="flex-1">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="font-medium">{{ rule.name }}</span>
+        <span class="text-xs px-2 py-0.5 rounded {{ 'bg-green-600' if rule.enabled else 'bg-gray-600' }}">
+          {{ 'Active' if rule.enabled else 'Disabled' }}
+        </span>
+        {% if rule.schedule_cron %}
+        <span class="text-xs px-2 py-0.5 rounded bg-purple-600">Scheduled</span>
+        {% endif %}
+      </div>
+      <div class="text-sm text-gray-400">
+        Topic: <span class="text-blue-400">{{ rule.trigger_topic }}</span>
+        | Action: <span class="text-yellow-400">{{ rule.action.type if rule.action else 'none' }}</span>
+        | Fired: {{ rule.fire_count }}x
+      </div>
+      {% if rule.description %}
+      <div class="text-xs text-gray-500 mt-1">{{ rule.description }}</div>
+      {% endif %}
+    </div>
+    <div class="flex gap-1 ml-2">
+      <!-- Enable/Disable toggle -->
+      {% if rule.enabled %}
+      <button hx-post="/partials/rules/{{ rule.id }}/toggle"
+              hx-target="#rule-{{ rule.id }}"
+              hx-swap="outerHTML"
+              class="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs"
+              title="Disable">Pause</button>
+      {% else %}
+      <button hx-post="/partials/rules/{{ rule.id }}/toggle"
+              hx-target="#rule-{{ rule.id }}"
+              hx-swap="outerHTML"
+              class="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs"
+              title="Enable">Enable</button>
+      {% endif %}
+      <!-- Edit -->
+      <button hx-get="/partials/rules/{{ rule.id }}/form"
+              hx-target="#rule-form-container"
+              hx-swap="innerHTML"
+              class="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs">Edit</button>
+      <!-- Dry Run -->
+      <button hx-get="/partials/rules/{{ rule.id }}/dry-run"
+              hx-target="#rule-form-container"
+              hx-swap="innerHTML"
+              class="px-2 py-1 bg-purple-600 hover:bg-purple-700 rounded text-xs">Test</button>
+      <!-- Delete -->
+      <button hx-delete="/partials/rules/{{ rule.id }}/delete"
+              hx-confirm="Delete rule '{{ rule.name }}'?"
+              hx-target="#rule-{{ rule.id }}"
+              hx-swap="outerHTML"
+              class="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs">Del</button>
+    </div>
+  </div>
+</div>

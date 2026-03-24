@@ -1,33 +1,30 @@
-<!DOCTYPE html>
-<html lang="en" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Web Interface</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+{% extends "base.html" %}
+
+{% block head %}
     <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
-</head>
-<body class="bg-gray-900 text-white overflow-hidden">
+{% endblock %}
+
+{% block body %}
     <div class="flex h-screen">
         <!-- Collapsible Sidebar -->
-        <div id="sidebar" class="w-80 bg-gray-900 border-r border-gray-700 transition-all duration-300 overflow-y-auto">
+        <div id="sidebar" class="w-80 bg-gray-900 border-r border-gray-700 transition-all duration-300 overflow-y-auto"
+             x-show="sidebarOpen"
+             x-bind:class="sidebarOpen ? 'w-80' : 'w-0 overflow-hidden'">
             <div class="p-4">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-xl font-bold">Controls</h2>
-                    <button id="sidebar-toggle" class="p-2 bg-gray-700 hover:bg-gray-600 rounded">◀</button>
+                    <button x-on:click="toggleSidebar()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded">&#9664;</button>
                 </div>
-                
+
                 <!-- Advanced Search Panel -->
-                <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-                    <div class="flex justify-between items-center mb-4 cursor-pointer" onclick="toggleAdvancedSearch()">
-                        <h3 class="text-lg font-semibold">🔍 Advanced Search</h3>
-                        <span id="search-toggle-icon" class="text-lg">▶</span>
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4" x-data="{ searchOpen: false }">
+                    <div class="flex justify-between items-center mb-4 cursor-pointer" x-on:click="searchOpen = !searchOpen">
+                        <h3 class="text-lg font-semibold">Advanced Search</h3>
+                        <span class="text-lg" x-text="searchOpen ? '&#9660;' : '&#9654;'"></span>
                     </div>
-                    <div id="advanced-search-content" class="hidden">
-                    
+                    <div x-show="searchOpen" x-transition>
+
                     <!-- Basic Topic Filter -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">Topic Filter</label>
@@ -35,26 +32,26 @@
                             <option value="all">All Topics</option>
                         </select>
                     </div>
-                    
+
                     <!-- Content Search -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">Content Search</label>
                         <input type="text" id="content-search" placeholder="Search message content..." class="block w-full rounded-md bg-gray-700 border-gray-600 text-white">
                     </div>
-                    
+
                     <!-- Regex Topic Search -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">Regex Topic Pattern</label>
                         <input type="text" id="regex-topic" placeholder="sensors/.* or home/+/temp" class="block w-full rounded-md bg-gray-700 border-gray-600 text-white">
                     </div>
-                    
+
                     <!-- JSON Path Search -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">JSON Path & Value</label>
                         <input type="text" id="json-path" placeholder="temperature or sensors.temp" class="block w-full mb-2 rounded-md bg-gray-700 border-gray-600 text-white">
                         <input type="text" id="json-value" placeholder="Expected value" class="block w-full rounded-md bg-gray-700 border-gray-600 text-white">
                     </div>
-                    
+
                     <!-- Time Filter -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">Time Range (hours)</label>
@@ -66,13 +63,13 @@
                             <option value="168">Last Week</option>
                         </select>
                     </div>
-                    
+
                     <!-- Search Actions -->
                     <div class="space-y-2">
                         <button id="apply-filters-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Apply Filters</button>
                         <button id="clear-filters-btn" class="w-full bg-gray-600 hover:bg-gray-700 text-white py-2 px-4 rounded">Clear All</button>
                     </div>
-                    
+
                     <!-- Filter Presets -->
                     <div class="mt-4 pt-4 border-t border-gray-600">
                         <label class="block text-sm font-medium mb-2">Filter Presets</label>
@@ -86,94 +83,165 @@
                     </div>
                     </div>
                 </div>
-                
+
                 <!-- Stats -->
-                <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-                    <h3 class="text-lg font-semibold mb-3">📊 Stats</h3>
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4" x-data="statsComponent()">
+                    <h3 class="text-lg font-semibold mb-3">Stats</h3>
                     <div class="space-y-1 text-sm">
-                        <p>Connections: <span id="connection-count" class="font-bold text-green-400">0</span></p>
-                        <p>Topics: <span id="topic-count" class="font-bold text-blue-400">0</span></p>
-                        <p>Messages: <span id="message-count" class="font-bold text-yellow-400">0</span></p>
+                        <p>Connections: <span class="font-bold text-green-400" x-text="connections">0</span></p>
+                        <p>Topics: <span class="font-bold text-blue-400" x-text="topics">0</span></p>
+                        <p>Messages: <span class="font-bold text-yellow-400" x-text="messageTotal">0</span></p>
                     </div>
                 </div>
-                
+
                 <!-- Message Rate Chart -->
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 mb-4">
-                    <h3 class="text-lg font-semibold mb-2">📈 Message Rate</h3>
-                    <div class="h-32">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-lg font-semibold">Message Rate</h3>
+                        <span class="text-2xl font-bold text-blue-400" id="rate-display">0</span>
+                        <span class="text-xs text-gray-500">msg/s</span>
+                    </div>
+                    <div class="h-40">
                         <canvas id="messageChart"></canvas>
                     </div>
                 </div>
-                
+
                 <!-- Publish -->
-                <div class="bg-gray-800 rounded-lg shadow-md p-4">
-                    <h3 class="text-lg font-semibold mb-3">📤 Publish</h3>
-                    <form id="publish-form" class="space-y-2">
-                        <input type="text" id="topic" name="topic" placeholder="Topic" required class="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm">
-                        <textarea id="message" name="message" placeholder="Message" required class="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm" rows="2"></textarea>
+                <div class="bg-gray-800 rounded-lg shadow-md p-4" x-data="publishComponent()">
+                    <h3 class="text-lg font-semibold mb-3">Publish</h3>
+                    <form @submit.prevent="submit()" class="space-y-2">
+                        <input type="text" x-model="topic" placeholder="Topic" required class="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm">
+                        <textarea x-model="message" placeholder="Message" required class="block w-full rounded-md bg-gray-700 border-gray-600 text-white text-sm" rows="2"></textarea>
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded text-sm">Publish</button>
                     </form>
                 </div>
             </div>
         </div>
-        
+
         <!-- Main Content Area -->
         <div class="flex-1 flex flex-col w-full min-h-0 mx-auto main-content-max">
             <!-- Header -->
             <div class="p-4 border-b border-gray-700">
                 <div class="flex justify-between items-center">
                     <h1 class="text-2xl font-bold">MQTT Web Interface</h1>
-                    <button id="sidebar-show" class="hidden p-2 bg-gray-700 hover:bg-gray-600 rounded">▶ Show Controls</button>
+                    <button x-show="!sidebarOpen" x-on:click="toggleSidebar()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded">&#9654; Show Controls</button>
                 </div>
             </div>
-            
-            <!-- Content Area -->
-            <div class="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
+
+            <!-- Tab Bar -->
+            <div class="flex border-b border-gray-700 px-4">
+                <button @click="activeTab = 'dashboard'"
+                        :class="activeTab === 'dashboard' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Dashboard
+                </button>
+                <button @click="activeTab = 'rules'; if (!rulesLoaded) { htmx.ajax('GET', '/partials/rules', {target: '#rules-panel', swap: 'innerHTML'}); rulesLoaded = true; }"
+                        :class="activeTab === 'rules' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Rules
+                </button>
+                <button @click="activeTab = 'alerts'; if (!alertsLoaded) { htmx.ajax('GET', '/partials/alerts', {target: '#alerts-panel', swap: 'innerHTML'}); alertsLoaded = true; }"
+                        :class="activeTab === 'alerts' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Alerts
+                </button>
+                <button @click="activeTab = 'analytics'; if (!analyticsLoaded) { htmx.ajax('GET', '/partials/analytics', {target: '#analytics-panel', swap: 'innerHTML'}); analyticsLoaded = true; }"
+                        :class="activeTab === 'analytics' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Analytics
+                </button>
+                <button @click="activeTab = 'plugins'; if (!pluginsLoaded) { htmx.ajax('GET', '/partials/plugins', {target: '#plugins-panel', swap: 'innerHTML'}); pluginsLoaded = true; }"
+                        :class="activeTab === 'plugins' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Plugins
+                </button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div x-show="activeTab === 'dashboard'" class="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
                 <!-- Message Flow -->
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-semibold">Message Flow</h2>
                         <div class="flex space-x-2">
-                            <button id="fullscreen-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">⛶ Fullscreen</button>
-                            <button id="reset-nodes-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">⟲ Reset</button>
+                            <button id="fullscreen-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm">Fullscreen</button>
+                            <button id="reset-nodes-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm">Reset</button>
                         </div>
                     </div>
                     <div id="network-visualization" class="flex-1 border border-gray-600 rounded"></div>
                 </div>
-                
+
                 <!-- Messages -->
-                <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col min-h-0">
-                    <h3 class="text-xl font-semibold mb-4">💬 Messages</h3>
-                    <div id="message-list" class="flex-1 overflow-y-auto space-y-2"></div>
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col min-h-0"
+                     x-data="messageListComponent()">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Messages</h3>
+                        <button @click="showFavoritesOnly = !showFavoritesOnly"
+                                :class="showFavoritesOnly ? 'bg-yellow-600' : 'bg-gray-600'"
+                                class="px-3 py-1 rounded text-xs hover:opacity-80 transition-colors">
+                            <span x-text="showFavoritesOnly ? '★ Favorites Only' : '☆ All Messages'"></span>
+                        </button>
+                    </div>
+                    <div class="flex-1 overflow-y-auto space-y-2" id="message-list">
+                        <template x-for="(msg, idx) in filteredMessages" :key="idx">
+                            <div class="bg-gray-700 p-3 rounded hover:bg-gray-600 transition-colors">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-blue-400 font-medium" x-text="msg.topic"></span>
+                                        <span x-show="msg.retain"
+                                              class="px-1.5 py-0.5 text-xs font-bold bg-amber-600 text-white rounded"
+                                              title="Retained message">R</span>
+                                        <button @click="toggleFavorite(msg.topic)"
+                                                :class="isFavorite(msg.topic) ? 'text-yellow-400' : 'text-gray-500'"
+                                                class="hover:text-yellow-300 text-sm" title="Toggle favorite">
+                                            <span x-html="isFavorite(msg.topic) ? '&#9733;' : '&#9734;'"></span>
+                                        </button>
+                                    </div>
+                                    <span class="text-gray-400 text-sm" x-text="formatTime(msg.timestamp)"></span>
+                                </div>
+                                <div class="text-gray-200 text-sm whitespace-pre-wrap" x-text="formatPayload(msg.payload)"></div>
+                            </div>
+                        </template>
+                        <div x-show="messages.length === 0" class="text-center p-4 text-gray-400">No messages</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rules Tab -->
+            <div x-show="activeTab === 'rules'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="rules-panel"
+                     hx-get="/partials/rules"
+                     hx-trigger="intersect once"
+                     hx-swap="innerHTML"
+                     class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading rules...</div>
+                </div>
+            </div>
+
+            <!-- Alerts Tab -->
+            <div x-show="activeTab === 'alerts'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="alerts-panel" class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading alerts...</div>
+                </div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div x-show="activeTab === 'analytics'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="analytics-panel" class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading analytics...</div>
+                </div>
+            </div>
+
+            <!-- Plugins Tab -->
+            <div x-show="activeTab === 'plugins'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="plugins-panel" class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading plugins...</div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <script>
-    function toggleSidebar() {
-        const sidebar = document.getElementById('sidebar');
-        const showBtn = document.getElementById('sidebar-show');
-        
-        if (sidebar.classList.contains('w-0')) {
-            sidebar.classList.remove('w-0', 'overflow-hidden');
-            sidebar.classList.add('w-80');
-            showBtn.classList.add('hidden');
-            document.body.classList.remove('sidebar-hidden');
-        } else {
-            sidebar.classList.remove('w-80');
-            sidebar.classList.add('w-0', 'overflow-hidden');
-            showBtn.classList.remove('hidden');
-            document.body.classList.add('sidebar-hidden');
-        }
-     }
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
-        document.getElementById('sidebar-show').addEventListener('click', toggleSidebar);
-    });
-    </script>
+{% endblock %}
 
+{% block scripts %}
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,101 @@
+<div x-data="analyticsWidget()" x-init="init()">
+    <!-- Top Topics by Message Rate -->
+    <div class="bg-gray-800 rounded-lg p-4 mb-4">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-lg font-semibold">Top Topics by Rate</h3>
+            <span class="text-xs text-gray-400" x-text="'Updated ' + lastUpdated"></span>
+        </div>
+
+        <div class="space-y-2">
+            <template x-for="t in topics" :key="t.topic">
+                <div class="flex items-center justify-between bg-gray-700 rounded p-2 cursor-pointer hover:bg-gray-600"
+                     @click="selectedTopic = (selectedTopic === t.topic ? null : t.topic)">
+                    <span class="text-sm text-blue-400 truncate flex-1" x-text="t.topic"></span>
+                    <div class="flex gap-3 text-xs text-gray-300 ml-2">
+                        <span x-text="t.rate_per_min.toFixed(1) + '/min'"></span>
+                        <span x-text="t.rate_per_hour.toFixed(0) + '/hr'"></span>
+                        <span class="text-gray-500" x-text="t.message_count + ' total'"></span>
+                    </div>
+                </div>
+            </template>
+            <div x-show="topics.length === 0" class="text-center text-gray-400 text-sm py-4">
+                No analytics data yet
+            </div>
+        </div>
+    </div>
+
+    <!-- Histogram Detail (shown when topic selected) -->
+    <div x-show="selectedTopic" class="bg-gray-800 rounded-lg p-4">
+        <h3 class="text-lg font-semibold mb-3">
+            Payload Stats: <span class="text-blue-400" x-text="selectedTopic"></span>
+        </h3>
+        <div class="space-y-2">
+            <template x-for="(stats, field) in selectedHistograms" :key="field">
+                <div class="bg-gray-700 rounded p-3">
+                    <div class="text-sm font-medium text-gray-200 mb-1" x-text="field"></div>
+                    <div class="grid grid-cols-4 gap-2 text-xs">
+                        <div>
+                            <span class="text-gray-400">Min:</span>
+                            <span class="text-green-400" x-text="stats.min.toFixed(2)"></span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Max:</span>
+                            <span class="text-red-400" x-text="stats.max.toFixed(2)"></span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Avg:</span>
+                            <span class="text-yellow-400" x-text="(stats.sum / stats.count).toFixed(2)"></span>
+                        </div>
+                        <div>
+                            <span class="text-gray-400">Count:</span>
+                            <span class="text-blue-400" x-text="stats.count"></span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            <div x-show="Object.keys(selectedHistograms).length === 0" class="text-sm text-gray-400">
+                No numeric fields detected in payloads
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function analyticsWidget() {
+    return {
+        topics: [],
+        selectedTopic: null,
+        selectedHistograms: {},
+        lastUpdated: 'never',
+        refreshInterval: null,
+
+        init() {
+            this.fetchAnalytics();
+            // Auto-refresh every 5 seconds
+            this.refreshInterval = setInterval(() => this.fetchAnalytics(), 5000);
+        },
+
+        async fetchAnalytics() {
+            try {
+                const resp = await fetch('/api/v1/analytics/topics?limit=10');
+                const json = await resp.json();
+                if (json.status === 'success') {
+                    this.topics = json.data.topics;
+                    this.lastUpdated = new Date().toLocaleTimeString();
+                    // Update selected topic histogram if still selected
+                    if (this.selectedTopic) {
+                        const found = this.topics.find(t => t.topic === this.selectedTopic);
+                        this.selectedHistograms = found ? found.histograms : {};
+                    }
+                }
+            } catch (e) {
+                console.error('Analytics fetch failed:', e);
+            }
+        },
+
+        destroy() {
+            if (this.refreshInterval) clearInterval(this.refreshInterval);
+        }
+    };
+}
+</script>

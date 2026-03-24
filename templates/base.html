@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MQTT Web Interface{% endblock %}</title>
+    <!-- Tailwind v4 compiled CSS (built by CLI), CDN fallback for dev -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/output.css') }}">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <!-- Alpine.js 3.x -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- htmx 2.x -->
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <!-- Tell Alpine to initialize new x-data elements after htmx swaps -->
+    <script>
+      document.addEventListener('htmx:afterSwap', function(event) {
+        if (window.Alpine) {
+          // Only init new x-data elements inside the swap target, not the target itself
+          // This prevents re-initializing the root app component (which breaks Chart.js)
+          event.detail.target.querySelectorAll('[x-data]:not([x-data-initialized])').forEach(function(el) {
+            Alpine.initTree(el);
+            el.setAttribute('x-data-initialized', '');
+          });
+        }
+      });
+    </script>
+    <!-- Socket.IO -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-900 text-white overflow-hidden" x-data="mqttuiApp()" x-init="init()">
+    {% block body %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

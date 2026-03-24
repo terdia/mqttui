@@ -1,0 +1,48 @@
+from mqttui.extensions import sa
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
+
+
+class User(UserMixin, sa.Model):
+    __tablename__ = 'users'
+
+    id = sa.Column(sa.Integer, primary_key=True)
+    username = sa.Column(sa.String(80), unique=True, nullable=False)
+    password_hash = sa.Column(sa.String(256), nullable=False)
+    api_token = sa.Column(sa.String(64), unique=True, nullable=True)
+    is_active_user = sa.Column(sa.Boolean, default=True)
+    created_at = sa.Column(sa.DateTime, server_default=sa.func.now())
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+    def generate_api_token(self):
+        self.api_token = secrets.token_hex(32)
+        return self.api_token
+
+    @property
+    def is_active(self):
+        return self.is_active_user
+
+
+class TopicFavorite(sa.Model):
+    __tablename__ = 'topic_favorites'
+
+    id = sa.Column(sa.Integer, primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('users.id'), nullable=False)
+    topic = sa.Column(sa.String(500), nullable=False)
+    created_at = sa.Column(sa.DateTime, server_default=sa.func.now())
+
+    __table_args__ = (sa.UniqueConstraint('user_id', 'topic', name='uq_user_topic'),)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'topic': self.topic,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -7,7 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Use an entrypoint script to allow for variable substitution
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 

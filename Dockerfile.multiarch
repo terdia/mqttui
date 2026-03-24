@@ -1,5 +1,5 @@
 # Multi-architecture Dockerfile supporting both AMD64 and ARM64 (fixes issue #3)
-FROM --platform=$TARGETPLATFORM python:3.9-slim
+FROM --platform=$TARGETPLATFORM python:3.11-slim
 
 # Set build arguments for multi-platform builds
 ARG TARGETPLATFORM
