@@ -1,51 +1,64 @@
-# MQTT Web Interface
+# MQTTUI — Intelligent MQTT Web Interface
 
-## Description
-
-MQTT Web Interface is an open-source web application that provides a real-time visualization of MQTT (Message Queuing Telemetry Transport) message flows. It allows users to monitor MQTT topics, publish messages, and view message statistics through an intuitive web interface.
-
-## Screenshot
+An open-source web application that monitors, visualizes, and **automates** your MQTT infrastructure. Create automation rules, get webhook alerts, track per-topic analytics, and extend with plugins — all from a single interface.
 
 ![Message Flow Screenshot](static/screenshot.png)
 
-![Application Screenshot](static/screenshot_1.png)
+## What's New in v2.0
 
-![Debug Screenshot](static/screenshot_2.png)
+- **Automation Rules Engine** — Create IF/THEN rules: when a topic matches a pattern and payload meets a condition, automatically publish, fire a webhook, or log an alert
+- **Webhook Alerting** — HTTP POST notifications with retry/backoff, SSRF protection, and alert deduplication
+- **Modern UI** — Alpine.js + htmx component architecture with tabbed navigation (Dashboard / Rules / Alerts / Analytics / Plugins)
+- **REST API** — Versioned `/api/v1/` endpoints with OpenAPI docs at `/api/v1/docs`
+- **User Authentication** — Login with username/password, API tokens for programmatic access
+- **Analytics** — Per-topic message rates, payload histograms, Prometheus `/metrics` endpoint
+- **Plugin Architecture** — Extend with custom handlers running in subprocess isolation
+- **218+ Automated Tests** — Full pytest suite across all features
 
 ## Features
 
-### Core Functionality
-- Real-time visualization of MQTT topic hierarchy and message flow
-- Ability to publish messages to MQTT topics
-- Display of message statistics (connection count, topic count, message count)
-- Interactive network graph showing topic relationships
-- Dockerized for easy deployment
-- Debug Bar for enhanced developer insights
-- Flexible configuration for both development and production environments
+### Core
+- Real-time MQTT message streaming via Socket.IO (handles 1000+ msg/sec with server-side batching)
+- Interactive topic hierarchy network graph (Vis.js)
+- Publish messages to any topic
+- SQLite message persistence with advanced search (regex, JSON path, time range)
+- Filter presets — save and load search combinations
+- MQTT v3.1.1 and v5 protocol support
+- Docker deployment with multi-arch support (AMD64, ARM64, ARMv7)
 
-### New in v1.3.2
-- **Message Persistence**: SQLite database storage with automatic cleanup and configurable limits
-- **Advanced Search & Filtering**: Comprehensive message filtering with multiple search options
-- **Collapsible Sidebar Layout**: Maximize screen real estate for better visualization
-- **Interactive Network Features**: Node pinning, fullscreen mode, and improved layout
-- **Filter Presets**: Save and load frequently used search combinations
+### Automation
+- **Rules Engine**: 11 condition operators (eq, gt, contains, regex, exists, etc.) with compound all/any logic
+- **JSON Path Conditions**: Match nested payload fields like `sensors.outdoor.temp > 30`
+- **Actions**: Publish to topic, HTTP webhook, log alert
+- **Loop Detection**: `__source` marker + per-rule rate limiting + global circuit breaker
+- **Time-Based Rules**: Cron schedules via APScheduler (e.g., publish heartbeat every 5 minutes)
+- **Dry-Run Testing**: Test rules against sample payloads before activating
+- **Hot-Reload**: Rule changes take effect immediately, no restart needed
 
-## Installation
+### Alerting
+- HTTP webhook delivery with customizable payload templates (`{{topic}}`, `{{payload}}`, `{{timestamp}}`)
+- Retry with exponential backoff (1s / 5s / 25s) on server errors
+- SSRF protection — blocks private/reserved addresses
+- Alert deduplication with configurable cooldown (5 min default)
+- Persistent alert history with delivery status tracking
 
-### Using Docker (Recommended)
+### Analytics & Observability
+- Per-topic message rate counters and numeric payload histograms
+- Structured JSON logging (structlog) for production
+- Prometheus-compatible `/metrics` endpoint
+- Topic favorites/bookmarks for quick access
+- Retained message indicator
 
-You can quickly get started with the MQTT Web Interface using Docker:
+### Plugin System
+- `MQTTUIPlugin` base class with `on_message`, `on_connect`, `on_rule_trigger` hooks
+- Subprocess isolation — plugins cannot access app internals
+- Python entry-point discovery (`pip install` your plugin)
+- Management UI with enable/disable toggles
+- Bundled examples: JSON Formatter, Topic Logger
 
-```bash
-docker pull terdia07/mqttui:v1.3.2
-docker run -p 8088:5000 terdia07/mqttui:v1.3.2
-```
+## Quick Start
 
-Then access the application at `http://localhost:8088`
-
-#### Docker Compose (Full Setup with MQTT Broker)
-
-For a complete setup with an MQTT broker included:
+### Docker Compose (Recommended)
 
 ```bash
 git clone https://github.com/terdia/mqttui.git
@@ -53,171 +66,133 @@ cd mqttui
 docker compose up -d
 ```
 
-This will start:
+This starts:
 - Mosquitto MQTT broker on port 1883
-- MQTT Web Interface on port 8088
-- Automatic database persistence enabled
+- MQTTUI on port 8088
+
+Open `http://localhost:8088` and log in with the admin credentials you set.
+
+### Docker
+
+```bash
+docker pull terdia07/mqttui:v2.0
+docker run -p 8088:5000 \
+  -e MQTT_BROKER=your_broker \
+  -e MQTTUI_ADMIN_USER=admin \
+  -e MQTTUI_ADMIN_PASSWORD=changeme \
+  -e SECRET_KEY=your-secret-key \
+  terdia07/mqttui:v2.0
+```
 
 ### Manual Installation
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/terdia/mqttui.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd mqttui
-   ```
-3. Install the required dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+git clone https://github.com/terdia/mqttui.git
+cd mqttui
+pip install -r requirements.txt
 
-## Usage
+# Set required environment variables
+export MQTTUI_ADMIN_USER=admin
+export MQTTUI_ADMIN_PASSWORD=changeme
+export SECRET_KEY=your-secret-key
+export MQTT_BROKER=localhost
 
-1. Set up your MQTT broker details:
-   - If using Docker, you can pass environment variables:
-     ```bash
-     docker run -p 5000:5000 -e MQTT_BROKER=your_broker_address -e MQTT_PORT=1883 terdia07/mqttui:v1.0.0
-     ```
-   - If running manually, set environment variables or modify `app.py` directly.
+python wsgi.py
+```
 
-2. Run the application:
-   - If using Docker, the application starts automatically.
-   - If installed manually, run:
-     ```bash
-     python app.py
-     ```
+### Running Tests
 
-3. Open a web browser and navigate to `http://localhost:5000` to access the interface.
-
-4. Use the interface to:
-   - View the MQTT topic hierarchy
-   - See real-time message flows
-   - Publish messages to topics
-   - Monitor connection and message statistics
-
-## Using the New Features (v1.3.2)
-
-### Collapsible Sidebar
-- **Hide Sidebar**: Click the `◀` button in the sidebar header to maximize the Message Flow area
-- **Show Sidebar**: When hidden, click `▶ Show Controls` in the main header to restore the sidebar
-- **Purpose**: Get maximum screen real estate for viewing large MQTT network topologies
-
-### Interactive Network Visualization
-- **Pin Nodes**: Double-click any node to pin it in place (turns red when pinned)
-- **Unpin Nodes**: Double-click pinned (red) nodes to unpin them
-- **Right-click Menu**: Right-click nodes for pin/unpin context menu
-- **Fullscreen Mode**: Click `⛶ Fullscreen` button to view Message Flow in fullscreen
-- **Reset Layout**: Click `⟲ Reset` to reorganize all nodes and unpin everything
-- **Drag & Zoom**: Drag to pan the view, scroll to zoom in/out
-
-### Advanced Search & Filtering
-Click `🔍 Advanced Search` in the sidebar to expand filtering options:
-
-- **Topic Filter**: Select specific topics from dropdown
-- **Content Search**: Search within message payloads for specific text
-- **Regex Topic Pattern**: Use patterns like `sensors/.*` or `home/+/temp`
-- **JSON Path & Value**: Query JSON messages (e.g., path: `temperature`, value: `23.5`)
-- **Time Range**: Filter by last hour, 6 hours, 24 hours, or week
-- **Apply Filters**: Click to apply current filter combination
-- **Clear All**: Reset all filters to show all messages
-
-### Filter Presets
-- **Save Preset**: Configure filters, then click `Save` and enter a name
-- **Load Preset**: Select from dropdown and click `Load` to apply saved filters
-- **Preset Management**: Presets are stored in the database and persist between sessions
-
-### Message Persistence
-All MQTT messages are automatically stored in a local SQLite database:
-- **Automatic Storage**: Messages saved with timestamps, topic, payload, and metadata
-- **Configurable Limits**: Set `DB_MAX_MESSAGES` to control storage (default: 10,000)
-- **Auto Cleanup**: Old messages automatically removed when limit exceeded
-- **Search History**: All stored messages are searchable with advanced filters
+```bash
+pip install -r requirements.txt
+pytest tests/ -q
+```
 
 ## Configuration
 
-The following environment variables can be used to configure the application:
+### Required Environment Variables
 
-- `DEBUG`: Set to `True` for development mode, `False` for production (default: `False`)
-- `PORT`: The port on which the application will run (default: `5000`)
-- `MQTT_BROKER`: The address of your MQTT broker (default: 'localhost')
-  - **Format**: Use IP address (e.g., `192.168.1.100`) or hostname (e.g., `mqtt.example.com`)
-  - **No protocol prefix**: Do not include `mqtt://` or `tcp://`
-  - **Examples**: `localhost`, `192.168.1.100`, `broker.hivemq.com`, `mqtt.example.com`
-- `MQTT_PORT`: The port of your MQTT broker (default: 1883)
-  - Common ports: `1883` (standard), `8883` (TLS/SSL)
-- `MQTT_USERNAME`: The username for authenticated connection (optional)
-- `MQTT_PASSWORD`: The password for authenticated connection (optional)
-- `MQTT_KEEPALIVE`: Keep-alive time for MQTT connection (default: 60)
-- `MQTT_VERSION`: MQTT protocol version to use (default: '3.1.1', options: '3.1.1' or '5')
-- `MQTT_TOPICS`: Comma-separated list of topics to subscribe to (default: '#' for all topics)
-  - **Examples**: `sensors/#`, `home/+/temperature`, `sensors/temp,sensors/humidity`
-- `LOG_LEVEL`: Logging level for the application (default: 'INFO')
-  - Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MQTTUI_ADMIN_USER` | Admin username | `admin` |
+| `MQTTUI_ADMIN_PASSWORD` | Admin password | *(required)* |
+| `SECRET_KEY` | Flask secret key (must not be "dev" in production) | *(required)* |
 
-### Database Configuration (New in v1.3.2)
-- `DB_ENABLED`: Enable message persistence (default: 'True')
-- `DB_PATH`: Path to SQLite database file (default: './data/mqtt_messages.db')
-- `DB_MAX_MESSAGES`: Maximum messages to store before cleanup (default: 10000)
-- `DB_CLEANUP_DAYS`: Delete messages older than X days (default: 30)
+### MQTT Connection
 
-## Development Mode
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `MQTT_BROKER` | Broker address (IP or hostname, no protocol prefix) | `localhost` |
+| `MQTT_PORT` | Broker port | `1883` |
+| `MQTT_USERNAME` | Broker username | *(optional)* |
+| `MQTT_PASSWORD` | Broker password | *(optional)* |
+| `MQTT_KEEPALIVE` | Keep-alive interval (seconds) | `60` |
+| `MQTT_VERSION` | Protocol version (`3.1.1` or `5`) | `3.1.1` |
+| `MQTT_TOPICS` | Topics to subscribe (comma-separated) | `#` |
 
-To run the application in development mode:
+### Application
 
-1. Set `DEBUG=True` in your `.env` file or export it as an environment variable.
-2. Run the application using Python or Docker as described above.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DEBUG` | Enable development mode | `False` |
+| `PORT` | Application port | `5000` |
+| `LOG_LEVEL` | Logging level (DEBUG/INFO/WARNING/ERROR) | `INFO` |
+| `MQTTUI_RATE_LIMIT` | Publish endpoint rate limit | `30/minute` |
 
-In development mode, the application uses Flask's built-in development server with debug features and the Debug Bar enabled.
+### Database
 
-## Production Deployment
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DB_ENABLED` | Enable message persistence | `True` |
+| `DB_PATH` | SQLite database path | `./data/mqtt_messages.db` |
+| `DB_MAX_MESSAGES` | Max stored messages | `10000` |
+| `DB_CLEANUP_DAYS` | Auto-delete messages older than X days | `30` |
 
-For production deployment:
+## API Documentation
 
-1. Ensure `DEBUG=False` in your environment.
-2. Use the Docker setup for the most straightforward deployment.
-3. The application will use Gunicorn with eventlet workers for better performance and concurrency.
+All API endpoints are under `/api/v1/` with OpenAPI documentation at `/api/v1/docs`.
+
+### Key Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/messages` | Message history with filtering |
+| `POST` | `/api/v1/publish` | Publish MQTT message |
+| `GET` | `/api/v1/topics` | Topic list with stats |
+| `GET/POST` | `/api/v1/rules/` | List / create automation rules |
+| `PUT/DELETE` | `/api/v1/rules/<id>` | Update / delete rule |
+| `POST` | `/api/v1/rules/<id>/test` | Dry-run test a rule |
+| `POST` | `/api/v1/rules/<id>/enable` | Enable rule |
+| `GET` | `/api/v1/alerts/` | Alert history |
+| `GET` | `/api/v1/analytics/topics` | Per-topic analytics |
+| `GET` | `/api/v1/plugins/` | List plugins |
+| `GET` | `/metrics` | Prometheus metrics |
+
+All data endpoints require authentication (session cookie or `X-API-Key` header).
+
+## Tech Stack
+
+- **Backend**: Python 3.11, Flask 3.1.x, Flask-SocketIO + gevent, paho-mqtt 2.1.0
+- **Database**: SQLite with WAL mode
+- **Frontend**: Alpine.js 3.x, htmx 2.x, Tailwind CSS v4, Vis.js, Chart.js
+- **Real-time**: Socket.IO with server-side 100ms batching
+- **Scheduling**: APScheduler with GeventScheduler
+- **Plugins**: pluggy + subprocess isolation
+- **Observability**: structlog + prometheus_client
 
 ## Contributing
 
-We welcome contributions to the MQTT Web Interface project! Here's how you can contribute:
-
 1. Fork the repository
-2. Create a new branch (`git checkout -b feature/AmazingFeature`)
-3. Make your changes
-4. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-5. Push to the branch (`git push origin feature/AmazingFeature`)
-6. Open a Pull Request
-
-Please make sure to update tests as appropriate and adhere to the project's coding standards.
-
-## Issues
-
-If you encounter any problems or have suggestions for improvements, please open an issue on the GitHub repository. When reporting issues, please provide as much detail as possible, including:
-
-- A clear and descriptive title
-- Steps to reproduce the issue
-- Expected behavior
-- Actual behavior
-- Any error messages or screenshots
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Run tests (`pytest tests/ -q`)
+4. Commit your changes
+5. Push and open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+MIT License — see [LICENSE.md](LICENSE.md) for details.
 
-## Acknowledgments
+## Links
 
-- [Flask](https://flask.palletsprojects.com/) - The web framework used
-- [Socket.IO](https://socket.io/) - For real-time, bidirectional communication
-- [Paho MQTT](https://www.eclipse.org/paho/) - MQTT client library
-- [Vis.js](https://visjs.org/) - For network visualization
-- [Chart.js](https://www.chartjs.org/) - For creating responsive charts
-
-## Contact
-
-Project Link: [https://github.com/terdia/mqttui](https://github.com/terdia/mqttui)
-
-## Disclaimer
-
-This software is provided "as is", without warranty of any kind, express or implied. Use at your own risk.
+- [GitHub Repository](https://github.com/terdia/mqttui)
+- [Docker Hub](https://hub.docker.com/r/terdia07/mqttui)
+- [Changelog](CHANGELOG.md)
