@@ -48,6 +48,13 @@ class AlertHistory(sa.Model):
     severity = sa.Column(sa.String(20), default='info')
     message = sa.Column(sa.Text)
     fired_at = sa.Column(sa.DateTime, server_default=sa.func.now())
+    # Webhook delivery fields (Phase 4)
+    webhook_url = sa.Column(sa.String(1000), nullable=True)
+    http_status = sa.Column(sa.Integer, nullable=True)
+    retry_count = sa.Column(sa.Integer, default=0)
+    error_detail = sa.Column(sa.Text, nullable=True)
+    suppressed_count = sa.Column(sa.Integer, default=0)
+    cooldown_until = sa.Column(sa.DateTime, nullable=True)
 
     def to_dict(self):
         return {
@@ -58,4 +65,10 @@ class AlertHistory(sa.Model):
             'severity': self.severity,
             'message': self.message,
             'fired_at': self.fired_at.isoformat() if self.fired_at else None,
+            'webhook_url': self.webhook_url,
+            'http_status': self.http_status,
+            'retry_count': self.retry_count,
+            'error_detail': self.error_detail,
+            'suppressed_count': self.suppressed_count,
+            'cooldown_until': self.cooldown_until.isoformat() if self.cooldown_until else None,
         }

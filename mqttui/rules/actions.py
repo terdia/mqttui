@@ -1,12 +1,20 @@
 """Action executor for the rules engine.
 
 Handles publish, log, and webhook action types.
+Webhook delivery uses httpx in a thread pool for non-blocking HTTP POST.
 """
 import json
 import logging
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
+import httpx
+
 logger = logging.getLogger(__name__)
+
+# Module-level thread pool for webhook delivery (non-blocking)
+_webhook_executor = ThreadPoolExecutor(max_workers=4)
 
 
 def execute_action(action_dict, context):
@@ -16,7 +24,7 @@ def execute_action(action_dict, context):
         action_dict: parsed action JSON with 'type' key.
             - type 'publish': publishes MQTT message with __source marker
             - type 'log': creates AlertHistory record in database
-            - type 'webhook': stub that logs intent (Phase 4)
+            - type 'webhook': HTTP POST with retry in thread pool
         context: dict with 'rule_id', 'rule_name', 'topic', 'payload' keys.
 
     Returns:
@@ -88,6 +96,182 @@ def _execute_log(action_dict, context):
 
 
 def _execute_webhook(action_dict, context):
-    """Webhook stub -- logs intent without making HTTP call."""
-    logger.info(f"Webhook stub: would POST to {action_dict.get('url', 'unknown')}")
-    return {"success": True, "detail": "Webhook stub (Phase 4)"}
+    """Submit webhook delivery to thread pool for async execution.
+
+    Returns immediately with submission confirmation. Actual HTTP delivery
+    happens in background thread with retry logic.
+    """
+    url = action_dict.get('url', '')
+    payload_template = action_dict.get('payload_template')
+
+    # Build payload
+    if payload_template:
+        payload_json = _build_webhook_payload(payload_template, context)
+    else:
+        payload_json = _build_default_payload(context)
+
+    # Submit to thread pool -- non-blocking
+    _webhook_executor.submit(
+        _deliver_webhook,
+        url=url,
+        payload_json=payload_json,
+        rule_id=context['rule_id'],
+        rule_name=context['rule_name'],
+        topic=context['topic'],
+    )
+
+    return {"success": True, "detail": "Webhook delivery submitted"}
+
+
+def _build_default_payload(context):
+    """Build the default webhook JSON payload."""
+    return {
+        "topic": context.get('topic', ''),
+        "payload": context.get('payload', ''),
+        "rule_name": context.get('rule_name', ''),
+        "timestamp": datetime.utcnow().isoformat(),
+        "mqttui_source": True,
+    }
+
+
+def _build_webhook_payload(template, context):
+    """Build webhook payload from a template string with {{variable}} substitution.
+
+    Supports: {{topic}}, {{payload}}, {{rule_name}}, {{timestamp}}
+
+    Args:
+        template: JSON string with {{variable}} placeholders.
+        context: dict with rule_id, rule_name, topic, payload.
+
+    Returns:
+        Parsed dict from the substituted template.
+    """
+    substitutions = {
+        '{{topic}}': str(context.get('topic', '')),
+        '{{payload}}': str(context.get('payload', '')),
+        '{{rule_name}}': str(context.get('rule_name', '')),
+        '{{timestamp}}': datetime.utcnow().isoformat(),
+    }
+
+    result = template
+    for placeholder, value in substitutions.items():
+        result = result.replace(placeholder, value)
+
+    try:
+        return json.loads(result)
+    except (json.JSONDecodeError, TypeError):
+        return {"raw": result}
+
+
+def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
+                     max_retries=3, _sleep_fn=None):
+    """Deliver webhook HTTP POST with retry logic.
+
+    Args:
+        url: Destination URL for the POST request.
+        payload_json: Dict payload to send as JSON.
+        rule_id: Rule ID for AlertHistory logging.
+        rule_name: Rule name for AlertHistory logging.
+        topic: MQTT topic that triggered the rule.
+        max_retries: Maximum retry attempts on 5xx/connection errors.
+        _sleep_fn: Override sleep function for testing (default: time.sleep).
+
+    Returns:
+        dict with 'success' bool and 'detail' string.
+    """
+    from mqttui.rules.models import AlertHistory
+    from mqttui.extensions import sa
+    from mqttui.events import alert_triggered
+
+    sleep_fn = _sleep_fn or time.sleep
+    last_status = None
+    last_error = None
+    retries = 0
+
+    for attempt in range(1 + max_retries):
+        try:
+            response = httpx.post(url, json=payload_json, timeout=10.0)
+            last_status = response.status_code
+
+            if 200 <= response.status_code < 300:
+                # Success
+                _log_webhook_history(
+                    sa, rule_id, rule_name, topic, url,
+                    http_status=response.status_code,
+                    retry_count=attempt,
+                )
+                alert_triggered.send(
+                    'webhook',
+                    alert_id=None,
+                    rule_id=rule_id,
+                    message=f"Webhook delivered to {url}",
+                )
+                logger.info(f"Webhook delivered: rule={rule_name} url={url} status={response.status_code}")
+                return {"success": True, "detail": f"Webhook delivered (HTTP {response.status_code})"}
+
+            elif 400 <= response.status_code < 500:
+                # Client error -- no retry
+                last_error = f"HTTP {response.status_code}: {response.text[:200]}"
+                logger.warning(f"Webhook client error: rule={rule_name} url={url} status={response.status_code}")
+                _log_webhook_history(
+                    sa, rule_id, rule_name, topic, url,
+                    http_status=response.status_code,
+                    retry_count=0,
+                    error_detail=last_error,
+                )
+                return {"success": False, "detail": last_error}
+
+            else:
+                # 5xx or other -- retry
+                last_error = f"HTTP {response.status_code}: {response.text[:200]}"
+                retries = attempt
+                if attempt < max_retries:
+                    backoff = 5 ** attempt  # 1s, 5s, 25s
+                    logger.info(f"Webhook retry {attempt + 1}/{max_retries}: rule={rule_name} backoff={backoff}s")
+                    sleep_fn(backoff)
+
+        except (httpx.ConnectError, httpx.TimeoutException, OSError) as e:
+            last_error = str(e)
+            retries = attempt
+            if attempt < max_retries:
+                backoff = 5 ** attempt
+                logger.info(f"Webhook retry {attempt + 1}/{max_retries}: rule={rule_name} error={e}")
+                sleep_fn(backoff)
+
+    # Exhausted retries
+    _log_webhook_history(
+        sa, rule_id, rule_name, topic, url,
+        http_status=last_status,
+        retry_count=retries,
+        error_detail=last_error,
+    )
+    logger.error(f"Webhook failed after {retries} retries: rule={rule_name} url={url}")
+    return {"success": False, "detail": f"Webhook failed after {retries} retries: {last_error}"}
+
+
+def _log_webhook_history(sa, rule_id, rule_name, topic, url,
+                         http_status=None, retry_count=0, error_detail=None):
+    """Create an AlertHistory record for webhook delivery."""
+    from mqttui.rules.models import AlertHistory
+
+    try:
+        record = AlertHistory(
+            rule_id=rule_id,
+            rule_name=rule_name,
+            topic=topic,
+            severity='info' if http_status and http_status < 400 else 'error',
+            message=f"Webhook to {url}",
+            fired_at=datetime.utcnow(),
+            webhook_url=url,
+            http_status=http_status,
+            retry_count=retry_count,
+            error_detail=error_detail,
+        )
+        sa.session.add(record)
+        sa.session.commit()
+    except Exception as e:
+        logger.error(f"Failed to log webhook history: {e}")
+        try:
+            sa.session.rollback()
+        except Exception:
+            pass
