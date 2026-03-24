@@ -21,4 +21,5 @@ data/
 
 # Static assets (if needed)
 static/mqttui-logo-svg.svg
-static/mqttui-logo.png
+static/mqttui-logo.png*.db-shm
+*.db-wal
