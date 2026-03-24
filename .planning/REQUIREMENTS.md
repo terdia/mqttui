@@ -78,8 +78,8 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 - [x] **PLUG-01**: MQTTUIPlugin abstract base class with defined hook specification
 - [x] **PLUG-02**: Plugin discovery via Python entry_points (importlib.metadata)
 - [x] **PLUG-03**: Plugin execution in subprocess isolation (JSON message in / JSON action out)
-- [ ] **PLUG-04**: Plugin management UI (list installed, enable/disable)
-- [ ] **PLUG-05**: Bundled example plugins (JSON formatter, topic logger)
+- [x] **PLUG-04**: Plugin management UI (list installed, enable/disable)
+- [x] **PLUG-05**: Bundled example plugins (JSON formatter, topic logger)
 
 ## v2 Requirements
 
@@ -156,8 +156,8 @@ Deferred to future releases. Tracked but not in current roadmap.
 | PLUG-01 | Phase 7 | Complete |
 | PLUG-02 | Phase 7 | Complete |
 | PLUG-03 | Phase 7 | Complete |
-| PLUG-04 | Phase 7 | Pending |
-| PLUG-05 | Phase 7 | Pending |
+| PLUG-04 | Phase 7 | Complete |
+| PLUG-05 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 44 total
