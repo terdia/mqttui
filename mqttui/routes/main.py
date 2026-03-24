@@ -147,6 +147,13 @@ def rule_toggle_partial(rule_id):
     return render_template('partials/rule_row.html', rule=rule)
 
 
+@bp.route('/partials/analytics')
+@login_required
+def analytics_partial():
+    """Return HTML partial for analytics dashboard widget."""
+    return render_template('partials/analytics.html')
+
+
 @bp.route('/partials/rules/<int:rule_id>/delete', methods=['DELETE'])
 @login_required
 def rule_delete_partial(rule_id):
