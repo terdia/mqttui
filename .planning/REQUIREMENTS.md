@@ -69,8 +69,8 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 ### Usability
 
-- [ ] **UX-01**: Topic favorites/bookmarks for quick access to monitored topics
-- [ ] **UX-02**: Retained message indicator on messages displayed in UI
+- [x] **UX-01**: Topic favorites/bookmarks for quick access to monitored topics
+- [x] **UX-02**: Retained message indicator on messages displayed in UI
 - [x] **UX-03**: Rule dry-run/preview sandbox to test expressions against sample payloads
 
 ### Plugin Architecture
@@ -150,8 +150,8 @@ Deferred to future releases. Tracked but not in current roadmap.
 | ANLYT-03 | Phase 6 | Complete |
 | ANLYT-04 | Phase 6 | Pending |
 | ANLYT-05 | Phase 6 | Pending |
-| UX-01 | Phase 6 | Pending |
-| UX-02 | Phase 6 | Pending |
+| UX-01 | Phase 6 | Complete |
+| UX-02 | Phase 6 | Complete |
 | UX-03 | Phase 4 | Complete |
 | PLUG-01 | Phase 7 | Pending |
 | PLUG-02 | Phase 7 | Pending |
