@@ -139,6 +139,13 @@ def _execute_webhook(action_dict, context):
     else:
         payload_json = _build_default_payload(context)
 
+    # Get Flask app for thread pool context
+    try:
+        from flask import current_app
+        app = current_app._get_current_object()
+    except RuntimeError:
+        app = None
+
     # Submit to thread pool -- non-blocking
     _webhook_executor.submit(
         _deliver_webhook,
@@ -147,6 +154,7 @@ def _execute_webhook(action_dict, context):
         rule_id=context['rule_id'],
         rule_name=context['rule_name'],
         topic=context['topic'],
+        app=app,
     )
 
     return {"success": True, "detail": "Webhook delivery submitted"}
@@ -193,7 +201,7 @@ def _build_webhook_payload(template, context):
 
 
 def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
-                     max_retries=3, _sleep_fn=None):
+                     max_retries=3, _sleep_fn=None, app=None):
     """Deliver webhook HTTP POST with retry logic.
 
     Args:
@@ -204,6 +212,7 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
         topic: MQTT topic that triggered the rule.
         max_retries: Maximum retry attempts on 5xx/connection errors.
         _sleep_fn: Override sleep function for testing (default: time.sleep).
+        app: Flask app instance for creating app context in thread pool.
 
     Returns:
         dict with 'success' bool and 'detail' string.
@@ -211,6 +220,12 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
     from mqttui.rules.models import AlertHistory
     from mqttui.extensions import sa
     from mqttui.events import alert_triggered
+
+    # Push app context for this thread (thread pool workers have none)
+    ctx = None
+    if app is not None:
+        ctx = app.app_context()
+        ctx.push()
 
     sleep_fn = _sleep_fn or time.sleep
     last_status = None
@@ -241,6 +256,8 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
                 except Exception:
                     pass
                 logger.info(f"Webhook delivered: rule={rule_name} url={url} status={response.status_code}")
+                if ctx is not None:
+                    ctx.pop()
                 return {"success": True, "detail": f"Webhook delivered (HTTP {response.status_code})"}
 
             elif 400 <= response.status_code < 500:
@@ -253,6 +270,8 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
                     retry_count=0,
                     error_detail=last_error,
                 )
+                if ctx is not None:
+                    ctx.pop()
                 return {"success": False, "detail": last_error}
 
             else:
@@ -285,6 +304,8 @@ def _deliver_webhook(url, payload_json, rule_id, rule_name, topic,
     except Exception:
         pass
     logger.error(f"Webhook failed after {retries} retries: rule={rule_name} url={url}")
+    if ctx is not None:
+        ctx.pop()
     return {"success": False, "detail": f"Webhook failed after {retries} retries: {last_error}"}
 
 
