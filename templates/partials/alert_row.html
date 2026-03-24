@@ -1,0 +1,42 @@
+<div class="bg-gray-700 rounded p-3 border-l-4
+  {% if alert.severity == 'critical' %}border-red-500
+  {% elif alert.severity == 'warning' %}border-yellow-500
+  {% else %}border-blue-500{% endif %}">
+  <div class="flex justify-between items-start">
+    <div class="flex-1">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-xs px-2 py-0.5 rounded
+          {% if alert.severity == 'critical' %}bg-red-600
+          {% elif alert.severity == 'warning' %}bg-yellow-600
+          {% else %}bg-blue-600{% endif %}">
+          {{ alert.severity }}
+        </span>
+        <span class="font-medium text-sm">{{ alert.rule_name or 'Unknown Rule' }}</span>
+        {% if alert.webhook_url %}
+        <span class="text-xs px-2 py-0.5 rounded
+          {% if alert.http_status and alert.http_status < 400 %}bg-green-600
+          {% elif alert.http_status %}bg-red-600
+          {% else %}bg-gray-600{% endif %}">
+          {% if alert.http_status %}HTTP {{ alert.http_status }}{% else %}Pending{% endif %}
+        </span>
+        {% endif %}
+        {% if alert.suppressed_count > 0 %}
+        <span class="text-xs text-gray-400">({{ alert.suppressed_count }} suppressed)</span>
+        {% endif %}
+      </div>
+      <div class="text-sm text-gray-300">{{ alert.message or '' }}</div>
+      <div class="text-xs text-gray-500 mt-1">
+        Topic: <span class="text-blue-400">{{ alert.topic or 'N/A' }}</span>
+        {% if alert.retry_count > 0 %}
+        | Retries: {{ alert.retry_count }}
+        {% endif %}
+        {% if alert.error_detail %}
+        | Error: <span class="text-red-400">{{ alert.error_detail[:100] }}</span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="text-xs text-gray-400 whitespace-nowrap ml-2">
+      {{ alert.fired_at.strftime('%Y-%m-%d %H:%M:%S') if alert.fired_at else '' }}
+    </div>
+  </div>
+</div>

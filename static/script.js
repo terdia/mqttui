@@ -24,6 +24,8 @@ document.addEventListener('alpine:init', () => {
 function mqttuiApp() {
     return {
         sidebarOpen: true,
+        activeTab: 'dashboard',
+        alertsLoaded: false,
         init() {
             // Initialize Chart.js and Vis.js network
             initChart();

@@ -124,8 +124,22 @@
                 </div>
             </div>
 
-            <!-- Content Area -->
-            <div class="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
+            <!-- Tab Bar -->
+            <div class="flex border-b border-gray-700 px-4">
+                <button @click="activeTab = 'dashboard'"
+                        :class="activeTab === 'dashboard' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Dashboard
+                </button>
+                <button @click="activeTab = 'alerts'; if (!alertsLoaded) { htmx.ajax('GET', '/partials/alerts', {target: '#alerts-panel', swap: 'innerHTML'}); alertsLoaded = true; }"
+                        :class="activeTab === 'alerts' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Alerts
+                </button>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div x-show="activeTab === 'dashboard'" class="flex-1 p-4 flex flex-col gap-4 overflow-hidden">
                 <!-- Message Flow -->
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col">
                     <div class="flex justify-between items-center mb-4">
@@ -154,6 +168,13 @@
                         </template>
                         <div x-show="messages.length === 0" class="text-center p-4 text-gray-400">No messages</div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Alerts Tab -->
+            <div x-show="activeTab === 'alerts'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="alerts-panel" class="flex-1 overflow-y-auto">
+                    <div class="text-center p-4 text-gray-400">Loading alerts...</div>
                 </div>
             </div>
         </div>
