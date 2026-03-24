@@ -1,11 +1,12 @@
 import os
 import logging
-from logging.handlers import RotatingFileHandler
 
+import structlog
 from flask import Flask
 
 from mqttui.extensions import socketio, sa, login_manager
-from mqttui.events import mqtt_message_received
+from mqttui.events import mqtt_message_received, rule_fired, alert_triggered
+from mqttui.logging_config import configure_logging
 
 
 def _on_mqtt_message(sender, **kwargs):
@@ -39,7 +40,7 @@ def _on_mqtt_message(sender, **kwargs):
                 timestamp=timestamp, qos=qos, retain=retain,
             )
         except Exception as e:
-            logging.getLogger(__name__).error(f"Failed to store message: {e}")
+            structlog.get_logger(__name__).error("Failed to store message", error=str(e))
 
 
 def create_app(config=None):
@@ -71,27 +72,9 @@ def create_app(config=None):
     if config:
         app.config.update(config)
 
-    # Set up logging
+    # Set up structured logging via structlog
     log_level_name = os.getenv('LOG_LEVEL', 'DEBUG' if app.config['DEBUG'] else 'INFO').upper()
-    log_levels = {
-        'DEBUG': logging.DEBUG,
-        'INFO': logging.INFO,
-        'WARNING': logging.WARNING,
-        'WARN': logging.WARNING,
-        'ERROR': logging.ERROR,
-        'CRITICAL': logging.CRITICAL
-    }
-    log_level = log_levels.get(log_level_name, logging.INFO)
-
-    logging.basicConfig(
-        level=log_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    if not app.config['DEBUG']:
-        handler = RotatingFileHandler('mqttui.log', maxBytes=10000, backupCount=1)
-        handler.setLevel(log_level)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        logging.getLogger('').addHandler(handler)
+    configure_logging(debug=app.config['DEBUG'], log_level=log_level_name)
 
     # SECRET_KEY production guard
     flask_env = os.getenv('FLASK_ENV', 'development')
@@ -140,9 +123,9 @@ def create_app(config=None):
                 app.config['DB_MAX_MESSAGES']
             )
             ext.db = db_instance
-            logging.info(f"Database initialized: {app.config['DB_PATH']}")
+            structlog.get_logger(__name__).info("Database initialized", path=app.config['DB_PATH'])
         except Exception as e:
-            logging.error(f"Failed to initialize database: {e}")
+            structlog.get_logger(__name__).error("Failed to initialize database", error=str(e))
 
     # Register blueprints
     from mqttui.routes.main import bp as main_bp
@@ -174,6 +157,18 @@ def create_app(config=None):
 
     # Wire event bus: forward MQTT messages to SocketIO and database
     mqtt_message_received.connect(_on_mqtt_message)
+
+    # Wire analytics subscriber to track per-topic rates and histograms
+    from mqttui.analytics import _on_mqtt_message as _on_analytics_message
+    mqtt_message_received.connect(_on_analytics_message)
+
+    # Wire Prometheus metric signal subscribers
+    from mqttui.routes.metrics import (
+        _on_message_for_metrics, _on_rule_fired_for_metrics, _on_alert_for_metrics
+    )
+    mqtt_message_received.connect(_on_message_for_metrics)
+    rule_fired.connect(_on_rule_fired_for_metrics)
+    alert_triggered.connect(_on_alert_for_metrics)
 
     # Initialize rules engine (Phase 3)
     from mqttui.rules.engine import RuleEngine

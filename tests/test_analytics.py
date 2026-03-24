@@ -95,3 +95,49 @@ class TestTopicAnalytics:
         assert all_stats[0]["topic"] == "topic/b"
         assert all_stats[1]["topic"] == "topic/c"
         assert all_stats[2]["topic"] == "topic/a"
+
+
+class TestAnalyticsAPI:
+    """Integration tests for analytics REST API endpoints."""
+
+    def test_get_topics_returns_200(self, auth_client, app):
+        """GET /api/v1/analytics/topics returns 200 with topics array."""
+        # Seed some analytics data
+        from mqttui.analytics import get_analytics
+        analytics = get_analytics()
+        now = time.time()
+        analytics.record("test/topic", '{"value": 42}', now)
+
+        resp = auth_client.get('/api/v1/analytics/topics')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["status"] == "success"
+        assert "topics" in data["data"]
+        assert isinstance(data["data"]["topics"], list)
+
+    def test_get_single_topic_returns_200(self, auth_client, app):
+        """GET /api/v1/analytics/topics/<topic> returns 200 with stats."""
+        from mqttui.analytics import get_analytics
+        analytics = get_analytics()
+        now = time.time()
+        analytics.record("home/sensor", '{"temp": 22}', now)
+
+        resp = auth_client.get('/api/v1/analytics/topics/home/sensor')
+        assert resp.status_code == 200
+        data = resp.get_json()
+        assert data["status"] == "success"
+        assert data["data"]["topic"] == "home/sensor"
+
+    def test_get_unknown_topic_returns_404(self, auth_client):
+        """GET /api/v1/analytics/topics/<unknown> returns 404."""
+        resp = auth_client.get('/api/v1/analytics/topics/nonexistent/topic')
+        assert resp.status_code == 404
+        data = resp.get_json()
+        assert data["status"] == "error"
+        assert data["error"]["code"] == "NOT_FOUND"
+
+    def test_unauthenticated_request_rejected(self, client):
+        """Unauthenticated request to analytics API is rejected."""
+        resp = client.get('/api/v1/analytics/topics')
+        # Flask-Login redirects to login page (302) or returns 401
+        assert resp.status_code in (302, 401)
