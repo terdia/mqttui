@@ -3,6 +3,15 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 
+@pytest.fixture(autouse=True)
+def _ensure_plugin_table(app):
+    """Ensure plugin_configs table exists (before Task 2 wires it into create_app)."""
+    with app.app_context():
+        from mqttui.plugins.models import PluginConfig  # noqa: F401
+        from mqttui.extensions import sa
+        sa.create_all()
+
+
 class TestMQTTUIPluginHookspec:
     """Test that MQTTUIPlugin defines the expected hookspec methods."""
 
