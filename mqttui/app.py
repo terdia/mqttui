@@ -116,6 +116,7 @@ def create_app(config=None):
 
     with app.app_context():
         from mqttui.models import User  # noqa: F811
+        from mqttui.rules.models import Rule, AlertHistory  # noqa: F401
         sa.create_all()
 
     # Initialize database if enabled
@@ -137,11 +138,13 @@ def create_app(config=None):
     from mqttui.routes.api import bp as api_bp  # TODO: Remove legacy /api/ routes in Phase 5 after frontend migrates to /api/v1/
     from mqttui.routes.debug import bp as debug_bp
     from mqttui.routes.api_v1 import api_v1_bp
+    from mqttui.routes.rules import rules_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(debug_bp)
     app.register_blueprint(api_v1_bp)
+    app.register_blueprint(rules_bp)
 
     # Register auth blueprint and seed admin user
     from mqttui.auth import auth_bp, seed_admin_user
