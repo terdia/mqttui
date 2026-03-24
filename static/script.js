@@ -48,7 +48,7 @@ function updateMessageList(message) {
     if (topicFilter === 'all' || message.topic === topicFilter) {
         const messageList = document.getElementById('message-list');
         const messageElement = document.createElement('div');
-        messageElement.className = 'mb-2 p-2 bg-gray-700 rounded';
+        messageElement.className = 'mb-2 p-2 bg-gray-700 rounded w-full break-words';
         messageElement.innerHTML = `<strong class="text-blue-400">${message.topic}:</strong> ${message.payload}`;
         messageList.insertBefore(messageElement, messageList.firstChild);
 

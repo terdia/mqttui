@@ -21,6 +21,16 @@ body {
     transition: background-color 0.3s, color 0.3s;
 }
 
+/* Allow the content to fill available space minus sidebar. */
+.main-content-max {
+    max-width: calc(100vw - 20rem);
+}
+
+/* When sidebar is hidden, allow full width */
+.sidebar-hidden .main-content-max {
+    max-width: 100vw;
+}
+
 /* Additional styles for better readability */
 #message-list div {
     background-color: rgba(55, 65, 81, 0.5);

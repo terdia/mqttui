@@ -118,7 +118,7 @@
         </div>
         
         <!-- Main Content Area -->
-        <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col w-full min-h-0 mx-auto main-content-max">
             <!-- Header -->
             <div class="p-4 border-b border-gray-700">
                 <div class="flex justify-between items-center">
@@ -142,7 +142,7 @@
                 </div>
                 
                 <!-- Messages -->
-                <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col">
+                <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col min-h-0">
                     <h3 class="text-xl font-semibold mb-4">💬 Messages</h3>
                     <div id="message-list" class="flex-1 overflow-y-auto space-y-2"></div>
                 </div>
@@ -159,12 +159,14 @@
             sidebar.classList.remove('w-0', 'overflow-hidden');
             sidebar.classList.add('w-80');
             showBtn.classList.add('hidden');
+            document.body.classList.remove('sidebar-hidden');
         } else {
             sidebar.classList.remove('w-80');
             sidebar.classList.add('w-0', 'overflow-hidden');
             showBtn.classList.remove('hidden');
+            document.body.classList.add('sidebar-hidden');
         }
-    }
+     }
     
     document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
