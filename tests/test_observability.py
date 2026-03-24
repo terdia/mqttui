@@ -22,8 +22,8 @@ class TestStructlogConfiguration:
         assert len(root.handlers) > 0
         formatter = root.handlers[0].formatter
         # ProcessorFormatter stores processors list
-        assert hasattr(formatter, '_processors')
-        processor_names = [type(p).__name__ for p in formatter._processors]
+        assert hasattr(formatter, 'processors')
+        processor_names = [type(p).__name__ for p in formatter.processors]
         assert 'ConsoleRenderer' in processor_names
 
     def test_configure_logging_production_uses_json_renderer(self):
@@ -37,8 +37,8 @@ class TestStructlogConfiguration:
         root = logging.getLogger()
         assert len(root.handlers) > 0
         formatter = root.handlers[0].formatter
-        assert hasattr(formatter, '_processors')
-        processor_names = [type(p).__name__ for p in formatter._processors]
+        assert hasattr(formatter, 'processors')
+        processor_names = [type(p).__name__ for p in formatter.processors]
         assert 'JSONRenderer' in processor_names
 
     def test_structlog_get_logger_returns_bound_logger(self):

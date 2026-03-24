@@ -16,3 +16,5 @@ apispec-webframeworks==1.2.0
 Flask-Limiter==3.11.0
 APScheduler==3.11.2
 httpx>=0.27
+structlog>=24.1.0
+prometheus_client>=0.21.0
