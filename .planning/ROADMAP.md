@@ -135,7 +135,12 @@ Plans:
   2. Plugin code runs in a subprocess and can only receive serialized message dicts and return serialized action dicts — it cannot import app, db, or mqtt_client
   3. User can view installed plugins, enable them, and disable them from the plugin management UI
   4. The bundled JSON formatter plugin formats a raw JSON payload into a human-readable string and the result appears in the message list
-**Plans**: TBD
+**Plans:** 3 plans
+
+Plans:
+- [ ] 07-01-PLAN.md — Plugin hookspec, PluginConfig model, PluginRegistry with entry_points discovery
+- [ ] 07-02-PLAN.md — Subprocess isolation runner with JSON protocol, timeout, event bus wiring
+- [ ] 07-03-PLAN.md — Plugin management REST API, UI tab, bundled example plugins
 
 ## Progress
 
@@ -150,4 +155,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Alerting | 0/2 | Not started | - |
 | 5. Frontend | 4/4 | Complete   | 2026-03-24 |
 | 6. Analytics and Observability | 0/4 | Not started | - |
-| 7. Plugin Architecture | 0/? | Not started | - |
+| 7. Plugin Architecture | 0/3 | Not started | - |
