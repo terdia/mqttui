@@ -97,10 +97,14 @@ function messageListComponent() {
                 }
             });
         },
-        async loadMessages() {
+        async loadMessages(extraFilters = {}) {
             const params = new URLSearchParams({ limit: '50' });
             const topic = Alpine.store('mqtt').selectedTopic;
             if (topic && topic !== 'all') params.append('topic', topic);
+            // Apply extra filters (from Advanced Search)
+            Object.entries(extraFilters).forEach(([key, value]) => {
+                if (value) params.append(key, value);
+            });
             try {
                 const resp = await fetch(`/api/v1/messages?${params}`);
                 const data = await resp.json();
@@ -109,6 +113,11 @@ function messageListComponent() {
             } catch (e) {
                 console.error('Error loading messages:', e);
             }
+        },
+        showFavoritesOnly: false,
+        get filteredMessages() {
+            if (!this.showFavoritesOnly) return this.messages;
+            return this.messages.filter(m => this.favorites.includes(m.topic));
         },
         async loadFavorites() {
             try {
@@ -491,30 +500,29 @@ function loadTopicsFromAPI() {
 }
 
 function loadFilteredMessages(customFilters = {}) {
+    // Find the Alpine message list component and call loadMessages with filters
     const messageList = document.getElementById('message-list');
     if (!messageList) return;
 
-    let queryParams = new URLSearchParams();
-    queryParams.append('limit', '50');
-
-    if (topicFilter && topicFilter !== 'all') {
-        queryParams.append('topic', topicFilter);
+    // Read topic from dropdown (not stale global)
+    const topicEl = document.getElementById('topic-filter');
+    const selectedTopic = topicEl ? topicEl.value : 'all';
+    if (selectedTopic !== 'all') {
+        Alpine.store('mqtt').selectedTopic = selectedTopic;
     }
 
-    Object.entries(customFilters).forEach(([key, value]) => {
-        if (value) queryParams.append(key, value);
-    });
+    // Get the Alpine component on the parent element
+    const alpineEl = messageList.closest('[x-data]');
+    if (alpineEl && alpineEl._x_dataStack) {
+        const component = alpineEl._x_dataStack[0];
+        if (component && component.loadMessages) {
+            component.loadMessages(customFilters);
+            return;
+        }
+    }
 
-    fetch(`/api/v1/messages?${queryParams.toString()}`)
-        .then(response => response.json())
-        .then(data => {
-            // For Alpine-driven message lists, dispatch an event
-            if (window.Alpine) {
-                // The messageListComponent handles its own rendering
-                return;
-            }
-        })
-        .catch(error => console.error('Error loading messages:', error));
+    // Fallback: dispatch event with filters
+    window.dispatchEvent(new CustomEvent('apply-filters', { detail: customFilters }));
 }
 
 // ============================================================

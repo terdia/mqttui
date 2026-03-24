@@ -170,9 +170,16 @@
                 <!-- Messages -->
                 <div class="bg-gray-800 rounded-lg shadow-md p-4 flex-1 flex flex-col min-h-0"
                      x-data="messageListComponent()">
-                    <h3 class="text-xl font-semibold mb-4">Messages</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xl font-semibold">Messages</h3>
+                        <button @click="showFavoritesOnly = !showFavoritesOnly"
+                                :class="showFavoritesOnly ? 'bg-yellow-600' : 'bg-gray-600'"
+                                class="px-3 py-1 rounded text-xs hover:opacity-80 transition-colors">
+                            <span x-text="showFavoritesOnly ? '★ Favorites Only' : '☆ All Messages'"></span>
+                        </button>
+                    </div>
                     <div class="flex-1 overflow-y-auto space-y-2" id="message-list">
-                        <template x-for="(msg, idx) in messages" :key="idx">
+                        <template x-for="(msg, idx) in filteredMessages" :key="idx">
                             <div class="bg-gray-700 p-3 rounded hover:bg-gray-600 transition-colors">
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
