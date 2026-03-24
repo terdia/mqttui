@@ -768,6 +768,7 @@ let debugBar;
 let debugBarToggle;
 
 function initDebugBar() {
+    if (debugBar) return; // Already initialized
     debugBar = document.createElement('div');
     debugBar.id = 'debug-bar';
     debugBar.style.display = 'none';
@@ -820,7 +821,8 @@ function updateDebugBar() {
     fetch('/debug-bar')
         .then(response => response.json())
         .then(data => {
-            let content = '<div class="debug-content">';
+            let content = '<button id="debug-bar-close" onclick="closeDebugBar()">&times;</button>';
+            content += '<div class="debug-content">';
             for (const [panelName, panelData] of Object.entries(data)) {
                 content += `<div class="debug-panel"><h3>${panelName}</h3><ul>`;
                 for (const [key, value] of Object.entries(panelData)) {
@@ -834,7 +836,6 @@ function updateDebugBar() {
             }
             content += '</div>';
             debugBar.innerHTML = content;
-            debugBar.appendChild(document.getElementById('debug-bar-close'));
         });
 }
 
