@@ -27,3 +27,22 @@ class User(UserMixin, sa.Model):
     @property
     def is_active(self):
         return self.is_active_user
+
+
+class TopicFavorite(sa.Model):
+    __tablename__ = 'topic_favorites'
+
+    id = sa.Column(sa.Integer, primary_key=True)
+    user_id = sa.Column(sa.Integer, sa.ForeignKey('users.id'), nullable=False)
+    topic = sa.Column(sa.String(500), nullable=False)
+    created_at = sa.Column(sa.DateTime, server_default=sa.func.now())
+
+    __table_args__ = (sa.UniqueConstraint('user_id', 'topic', name='uq_user_topic'),)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'topic': self.topic,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

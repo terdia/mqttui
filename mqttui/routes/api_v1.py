@@ -13,6 +13,7 @@ from mqttui import state
 from mqttui import extensions as ext
 from mqttui.extensions import sa, limiter
 from mqttui.helpers import api_success, api_error
+from mqttui.models import TopicFavorite
 
 api_v1_bp = Blueprint('api_v1', __name__, url_prefix='/api/v1')
 logger = logging.getLogger(__name__)
@@ -140,10 +141,74 @@ def get_topics():
         else:
             topics_list = [{'topic': topic} for topic in sorted(state.topics)]
 
+        # Annotate with is_favorite for the current user
+        fav_topics = set()
+        if current_user.is_authenticated:
+            favs = TopicFavorite.query.filter_by(user_id=current_user.id).all()
+            fav_topics = {f.topic for f in favs}
+        for t in topics_list:
+            t['is_favorite'] = t.get('topic', '') in fav_topics
+
         return api_success({'topics': topics_list})
     except Exception as e:
         logger.error(f"Error getting topics: {e}")
         return api_error(str(e), "TOPICS_ERROR", 500)
+
+
+@api_v1_bp.route('/topics/favorites')
+@login_required
+def get_favorites():
+    """Get current user's bookmarked topics.
+    ---
+    get:
+      summary: List favorite topics
+      responses:
+        200:
+          description: Favorites list
+    """
+    try:
+        favs = TopicFavorite.query.filter_by(user_id=current_user.id).all()
+        return api_success({'favorites': [f.to_dict() for f in favs]})
+    except Exception as e:
+        logger.error(f"Error getting favorites: {e}")
+        return api_error(str(e), "FAVORITES_ERROR", 500)
+
+
+@api_v1_bp.route('/topics/<path:topic>/bookmark', methods=['POST'])
+@login_required
+def toggle_bookmark(topic):
+    """Toggle bookmark on a topic.
+    ---
+    post:
+      summary: Toggle topic bookmark
+      parameters:
+        - name: topic
+          in: path
+          required: true
+          schema: {type: string}
+      responses:
+        201:
+          description: Bookmark created
+        200:
+          description: Bookmark removed
+    """
+    try:
+        existing = TopicFavorite.query.filter_by(
+            user_id=current_user.id, topic=topic
+        ).first()
+        if existing:
+            sa.session.delete(existing)
+            sa.session.commit()
+            return api_success({'bookmarked': False, 'topic': topic})
+        else:
+            fav = TopicFavorite(user_id=current_user.id, topic=topic)
+            sa.session.add(fav)
+            sa.session.commit()
+            return api_success({'bookmarked': True, 'topic': topic}, 201)
+    except Exception as e:
+        sa.session.rollback()
+        logger.error(f"Error toggling bookmark: {e}")
+        return api_error(str(e), "BOOKMARK_ERROR", 500)
 
 
 # ---------------------------------------------------------------------------
