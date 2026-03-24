@@ -97,7 +97,15 @@ class PluginRunner:
             return []
 
         all_actions = []
-        for plugin in registry.get_enabled_plugins():
+        try:
+            if self.app:
+                with self.app.app_context():
+                    enabled = registry.get_enabled_plugins()
+            else:
+                enabled = registry.get_enabled_plugins()
+        except (RuntimeError, Exception):
+            enabled = []
+        for plugin in enabled:
             actions = self.call_plugin(
                 plugin, "on_message", {"topic": topic, "payload": payload}
             )
