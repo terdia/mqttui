@@ -34,7 +34,7 @@ fi
 # ---------------------------------------------------------------------------
 echo -e "${YELLOW}[1/7] Authenticating...${NC}"
 COOKIE_JAR="/tmp/mqttui-demo-cookies.txt"
-LOGIN_RESP=$(curl -s -c "$COOKIE_JAR" -X POST "$API_URL/../login" \
+LOGIN_RESP=$(curl -s -c "$COOKIE_JAR" -X POST "http://localhost:8088/login" \
     -d "username=admin&password=admin" \
     -L -o /dev/null -w "%{http_code}")
 
