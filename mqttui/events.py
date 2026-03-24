@@ -13,3 +13,7 @@ rule_fired = mqttui_signals.signal('rule-fired')
 # Fired when an alert is triggered (Phase 4 will use this)
 # sender: alerting module, kwargs: alert_id, rule_id, message
 alert_triggered = mqttui_signals.signal('alert-triggered')
+
+# Fired when a rule is created, updated, or deleted (Phase 3 hot-reload)
+# sender: rules API, kwargs: action ('created'|'updated'|'deleted'), rule_id
+rule_changed = mqttui_signals.signal('rule-changed')
