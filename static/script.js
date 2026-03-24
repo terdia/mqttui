@@ -853,6 +853,10 @@ function ruleFormComponent(existing = {}) {
             action_template: action.payload_template || '',
             action_severity: action.severity || 'info',
             action_message: action.message || '',
+            action_bot_token: action.bot_token || '',
+            action_chat_id: action.chat_id || '',
+            action_message_template: action.message_template || '',
+            action_slack_url: action.webhook_url || '',
             rate_limit_per_min: existing.rate_limit_per_min || 10,
         },
         error: '',
@@ -882,6 +886,13 @@ function ruleFormComponent(existing = {}) {
             if (this.form.action_type === 'publish') {
                 act.topic = this.form.action_topic;
                 act.payload = this.form.action_payload;
+            } else if (this.form.action_type === 'telegram') {
+                act.bot_token = this.form.action_bot_token;
+                act.chat_id = this.form.action_chat_id;
+                if (this.form.action_message_template) act.message_template = this.form.action_message_template;
+            } else if (this.form.action_type === 'slack') {
+                act.webhook_url = this.form.action_slack_url;
+                if (this.form.action_message_template) act.message_template = this.form.action_message_template;
             } else if (this.form.action_type === 'webhook') {
                 act.url = this.form.action_url;
                 if (this.form.action_template) act.payload_template = this.form.action_template;
