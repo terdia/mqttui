@@ -16,7 +16,12 @@
     <script>
       document.addEventListener('htmx:afterSwap', function(event) {
         if (window.Alpine) {
-          Alpine.initTree(event.detail.target);
+          // Only init new x-data elements inside the swap target, not the target itself
+          // This prevents re-initializing the root app component (which breaks Chart.js)
+          event.detail.target.querySelectorAll('[x-data]:not([x-data-initialized])').forEach(function(el) {
+            Alpine.initTree(el);
+            el.setAttribute('x-data-initialized', '');
+          });
         }
       });
     </script>

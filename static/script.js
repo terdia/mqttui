@@ -200,7 +200,10 @@ function publishComponent() {
 // Chart.js (kept as-is per plan)
 // ============================================================
 function initChart() {
-    const ctx = document.getElementById('messageChart').getContext('2d');
+    if (messageChart) return; // Already initialized
+    const canvas = document.getElementById('messageChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     messageChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -250,6 +253,7 @@ function updateChart() {
 // Vis.js network (kept as-is per plan)
 // ============================================================
 function initNetwork() {
+    if (network) return; // Already initialized
     nodes = new vis.DataSet([
         { id: 'broker', label: 'MQTT Broker', shape: 'hexagon', color: '#FFA500', size: 30 }
     ]);
