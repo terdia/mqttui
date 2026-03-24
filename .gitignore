@@ -26,3 +26,6 @@ static/mqttui-logo.png
 # SQLite WAL/SHM temp files
 *.db-shm
 *.db-wal
+
+# GSD planning artifacts
+.planning/
