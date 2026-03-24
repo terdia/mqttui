@@ -41,6 +41,9 @@ class TopicAnalytics:
         # Track timestamp for rate calculation
         if topic not in self._timestamps:
             self._timestamps[topic] = deque(maxlen=MAX_TIMESTAMPS)
+        # Ensure timestamp is a Unix float for rate calculations
+        if hasattr(timestamp, 'timestamp'):
+            timestamp = timestamp.timestamp()
         self._timestamps[topic].append(timestamp)
 
         # Try to extract numeric fields from JSON payload
