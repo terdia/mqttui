@@ -1,0 +1,8 @@
+/* Tailwind CSS v4 compiled output.
+ * Build with: tailwindcss -i static/css/input.css -o static/css/output.css --minify
+ * Watch with: tailwindcss -i static/css/input.css -o static/css/output.css --watch
+ *
+ * This file is a placeholder for local development without the Tailwind CLI.
+ * The CDN fallback in base.html provides Tailwind utilities during development.
+ * The Dockerfile compiles this file during the Docker build.
+ */

@@ -16,12 +16,18 @@ def _on_mqtt_message(sender, **kwargs):
     qos = kwargs.get('qos', 0)
     retain = kwargs.get('retain', False)
 
-    # Emit to connected browsers
-    socketio.emit('mqtt_message', {
+    # Emit to connected browsers via batch emitter (100ms batching)
+    from mqttui.socketio_batch import get_batch_emitter
+    emitter = get_batch_emitter()
+    msg_data = {
         'topic': topic,
         'payload': payload,
         'timestamp': timestamp.isoformat(),
-    })
+    }
+    if emitter:
+        emitter.enqueue(msg_data)
+    else:
+        socketio.emit('mqtt_message', msg_data)
 
     # Persist to database
     import mqttui.extensions as ext
@@ -96,6 +102,10 @@ def create_app(config=None):
 
     # Initialize SocketIO with gevent async mode
     socketio.init_app(app, async_mode='gevent')
+
+    # Initialize batch emitter for Socket.IO message batching (100ms windows)
+    from mqttui.socketio_batch import init_batch_emitter
+    init_batch_emitter(socketio, interval_ms=100)
 
     # Enable CORS for API endpoints
     from flask_cors import CORS
