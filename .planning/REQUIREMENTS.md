@@ -61,9 +61,9 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 
 ### Analytics
 
-- [ ] **ANLYT-01**: Per-topic message rate counters displayed in UI
-- [ ] **ANLYT-02**: Payload value histograms for numeric payloads
-- [ ] **ANLYT-03**: Analytics time-series queries via SQLite JSON1 extension
+- [x] **ANLYT-01**: Per-topic message rate counters displayed in UI
+- [x] **ANLYT-02**: Payload value histograms for numeric payloads
+- [x] **ANLYT-03**: Analytics time-series queries via SQLite JSON1 extension
 - [ ] **ANLYT-04**: Structured JSON logging replacing print/stdlib logging (structlog)
 - [ ] **ANLYT-05**: Prometheus-compatible /metrics endpoint for production monitoring
 
@@ -145,9 +145,9 @@ Deferred to future releases. Tracked but not in current roadmap.
 | UI-04 | Phase 5 | Complete |
 | UI-05 | Phase 5 | Complete |
 | UI-06 | Phase 5 | Complete |
-| ANLYT-01 | Phase 6 | Pending |
-| ANLYT-02 | Phase 6 | Pending |
-| ANLYT-03 | Phase 6 | Pending |
+| ANLYT-01 | Phase 6 | Complete |
+| ANLYT-02 | Phase 6 | Complete |
+| ANLYT-03 | Phase 6 | Complete |
 | ANLYT-04 | Phase 6 | Pending |
 | ANLYT-05 | Phase 6 | Pending |
 | UX-01 | Phase 6 | Pending |
