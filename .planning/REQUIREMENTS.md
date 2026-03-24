@@ -34,10 +34,10 @@ Requirements for v2.0 release. Each maps to roadmap phases.
 ### Rules Engine
 
 - [x] **RULE-01**: User can create automation rule with topic pattern trigger and payload condition
-- [ ] **RULE-02**: User can define rule actions: publish to topic, trigger webhook, or log alert
-- [ ] **RULE-03**: Rules evaluate against incoming MQTT messages in real-time
-- [ ] **RULE-04**: Rules engine includes loop detection with per-rule rate limiting and global circuit breaker
-- [ ] **RULE-05**: User can enable/disable individual rules without deleting them
+- [x] **RULE-02**: User can define rule actions: publish to topic, trigger webhook, or log alert
+- [x] **RULE-03**: Rules evaluate against incoming MQTT messages in real-time
+- [x] **RULE-04**: Rules engine includes loop detection with per-rule rate limiting and global circuit breaker
+- [x] **RULE-05**: User can enable/disable individual rules without deleting them
 - [ ] **RULE-06**: User can create time-based rules (fire at schedule, e.g., publish heartbeat every 5 minutes)
 - [ ] **RULE-07**: Rules hot-reload from database without application restart
 - [ ] **RULE-08**: Rule CRUD available via REST API endpoints
@@ -127,10 +127,10 @@ Deferred to future releases. Tracked but not in current roadmap.
 | AUTH-03 | Phase 2 | Complete |
 | AUTH-04 | Phase 2 | Complete |
 | RULE-01 | Phase 3 | Complete |
-| RULE-02 | Phase 3 | Pending |
-| RULE-03 | Phase 3 | Pending |
-| RULE-04 | Phase 3 | Pending |
-| RULE-05 | Phase 3 | Pending |
+| RULE-02 | Phase 3 | Complete |
+| RULE-03 | Phase 3 | Complete |
+| RULE-04 | Phase 3 | Complete |
+| RULE-05 | Phase 3 | Complete |
 | RULE-06 | Phase 3 | Pending |
 | RULE-07 | Phase 3 | Pending |
 | RULE-08 | Phase 3 | Pending |

@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-03-24T09:23:48.392Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-03-24T09:29:57.041Z"
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 9
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 ## Current Position
 
 Phase: 03 (Rules Engine) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 ## Performance Metrics
 
@@ -52,6 +52,8 @@ Plan: 2 of 4
 | Phase 02-01 P01 | 3min | 2 tasks | 9 files |
 | Phase 02 P03 | 4min | 2 tasks | 8 files |
 | Phase 03-01 P01 | 2min | 2 tasks | 6 files |
+| Phase 03-02 P02 | 4min | 2 tasks | 5 files |
+| Phase 03-03 P03 | 4min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -80,6 +82,11 @@ Recent decisions affecting current work:
 - [Phase 02-03]: Used Flask-Limiter 3.11.0 instead of planned 3.12 (version does not exist)
 - [Phase 02-03]: Added custom 429 error handler with Retry-After header and JSON envelope format
 - [Phase 03-01]: Evaluator is a pure function with no database or side-effect dependencies
+- [Phase 03-02]: Used MQTTMatcher from paho-mqtt for topic wildcard matching
+- [Phase 03-02]: Sliding-window deque for rate limiting (O(1) amortized)
+- [Phase 03-02]: Rate limit timestamps undo on condition-not-matched to avoid false rate limiting
+- [Phase 03-03]: Custom _topic_matches() for MQTT wildcard matching instead of paho MQTTMatcher dependency
+- [Phase 03-03]: Used sa.session.get() instead of deprecated Rule.query.get() for SQLAlchemy 2.0 compat
 
 ### Pending Todos
 
@@ -94,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-24T09:23:48.390Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-03-24T09:29:57.039Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
