@@ -4,11 +4,16 @@ An open-source web application that monitors, visualizes, and **automates** your
 
 ![Message Flow Screenshot](static/screenshot.png)
 
+## What's New in v2.1
+
+- **Multi-Broker Support** — Connect to multiple MQTT brokers simultaneously, manage from the Brokers tab, filter messages by broker
+- **Telegram & Slack Alerts** — First-class action types in the rules editor, no raw webhook URLs needed
+
 ## What's New in v2.0
 
 - **Automation Rules Engine** — Create IF/THEN rules: when a topic matches a pattern and payload meets a condition, automatically publish, fire a webhook, or log an alert
-- **Webhook Alerting** — HTTP POST notifications with retry/backoff, SSRF protection, and alert deduplication
-- **Modern UI** — Alpine.js + htmx component architecture with tabbed navigation (Dashboard / Rules / Alerts / Analytics / Plugins)
+- **Alerting** — Telegram, Slack, and HTTP webhook notifications with retry/backoff, SSRF protection, and alert deduplication
+- **Modern UI** — Alpine.js + htmx component architecture with tabbed navigation (Dashboard / Rules / Alerts / Analytics / Plugins / Brokers)
 - **REST API** — Versioned `/api/v1/` endpoints with OpenAPI docs at `/api/v1/docs`
 - **User Authentication** — Login with username/password, API tokens for programmatic access
 - **Analytics** — Per-topic message rates, payload histograms, Prometheus `/metrics` endpoint
@@ -18,6 +23,7 @@ An open-source web application that monitors, visualizes, and **automates** your
 ## Features
 
 ### Core
+- **Multi-broker** — connect to multiple MQTT brokers simultaneously, filter messages by broker
 - Real-time MQTT message streaming via Socket.IO (handles 1000+ msg/sec with server-side batching)
 - Interactive topic hierarchy network graph (Vis.js)
 - Publish messages to any topic

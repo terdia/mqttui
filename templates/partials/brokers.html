@@ -1,0 +1,118 @@
+<div class="space-y-4" x-data="brokersComponent()" x-init="loadBrokers()">
+    <div class="flex justify-between items-center">
+        <h3 class="text-xl font-semibold">Broker Connections</h3>
+        <button @click="showForm = !showForm"
+                class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
+            + Add Broker
+        </button>
+    </div>
+
+    <!-- Add/Edit Form -->
+    <div x-show="showForm" x-transition class="bg-gray-800 border border-gray-600 rounded p-4">
+        <h4 class="text-md font-semibold mb-3" x-text="editId ? 'Edit Broker' : 'Add Broker'"></h4>
+        <form @submit.prevent="saveBroker()" class="space-y-3">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Name *</label>
+                    <input type="text" x-model="form.name" required placeholder="Production Broker"
+                           class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Host *</label>
+                    <input type="text" x-model="form.host" required placeholder="broker.example.com"
+                           class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Port</label>
+                    <input type="number" x-model.number="form.port" placeholder="1883"
+                           class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">MQTT Version</label>
+                    <select x-model="form.mqtt_version"
+                            class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                        <option value="3.1.1">v3.1.1</option>
+                        <option value="5">v5</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Username</label>
+                    <input type="text" x-model="form.username" placeholder="(optional)"
+                           class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Password</label>
+                    <input type="password" x-model="form.password" placeholder="(optional)"
+                           class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">Topics</label>
+                <input type="text" x-model="form.topics" placeholder="# (all topics)"
+                       class="block w-full rounded bg-gray-700 border-gray-600 text-white text-sm p-2">
+                <span class="text-xs text-gray-500">Comma-separated. Supports wildcards: +, #</span>
+            </div>
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" x-model="form.tls_enabled" class="rounded">
+                    TLS/SSL
+                </label>
+                <label x-show="form.tls_enabled" class="flex items-center gap-2 text-sm">
+                    <input type="checkbox" x-model="form.tls_insecure" class="rounded">
+                    Skip cert verification
+                </label>
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm"
+                        x-text="editId ? 'Update' : 'Add'"></button>
+                <button type="button" @click="resetForm()"
+                        class="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded text-sm">Cancel</button>
+            </div>
+            <div x-show="error" x-text="error" class="text-red-400 text-sm"></div>
+        </form>
+    </div>
+
+    <!-- Broker List -->
+    <div class="space-y-2">
+        <template x-for="broker in brokers" :key="broker.id">
+            <div class="bg-gray-700 rounded p-3 border-l-4"
+                 :class="broker.connected ? 'border-green-500' : 'border-red-500'">
+                <div class="flex justify-between items-start">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-medium" x-text="broker.name"></span>
+                            <span class="text-xs px-2 py-0.5 rounded"
+                                  :class="broker.connected ? 'bg-green-600' : 'bg-red-600'"
+                                  x-text="broker.connected ? 'Connected' : 'Disconnected'"></span>
+                            <span x-show="broker.is_default" class="text-xs px-2 py-0.5 rounded bg-blue-600">Default</span>
+                            <span x-show="broker.tls_enabled" class="text-xs px-2 py-0.5 rounded bg-purple-600">TLS</span>
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            <span x-text="broker.host + ':' + broker.port"></span>
+                            | Topics: <span class="text-blue-400" x-text="broker.topics || '#'"></span>
+                        </div>
+                        <div x-show="broker.connection_error" class="text-xs text-red-400 mt-1"
+                             x-text="broker.connection_error"></div>
+                    </div>
+                    <div class="flex gap-1 ml-2">
+                        <template x-if="broker.connected">
+                            <button @click="disconnectBroker(broker.id)"
+                                    class="px-2 py-1 bg-yellow-600 hover:bg-yellow-700 rounded text-xs">Disconnect</button>
+                        </template>
+                        <template x-if="!broker.connected">
+                            <button @click="connectBroker(broker.id)"
+                                    class="px-2 py-1 bg-green-600 hover:bg-green-700 rounded text-xs">Connect</button>
+                        </template>
+                        <button @click="editBroker(broker)"
+                                class="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs">Edit</button>
+                        <button @click="if(confirm('Delete broker ' + broker.name + '?')) deleteBroker(broker.id)"
+                                class="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-xs">Del</button>
+                    </div>
+                </div>
+            </div>
+        </template>
+        <div x-show="brokers.length === 0" class="text-gray-500 text-center py-4">
+            No brokers configured. Add one above.
+        </div>
+    </div>
+</div>

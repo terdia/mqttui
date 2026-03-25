@@ -24,6 +24,8 @@ def _on_mqtt_message(sender, **kwargs):
         'payload': payload,
         'timestamp': timestamp.isoformat(),
         'retain': retain,
+        'broker_id': kwargs.get('broker_id'),
+        'broker_name': kwargs.get('broker_name'),
     }
     if emitter:
         emitter.enqueue(msg_data)
@@ -142,6 +144,7 @@ def create_app(config=None):
     from mqttui.routes.metrics import metrics_bp
     from mqttui.routes.analytics import analytics_bp
     from mqttui.routes.plugins import plugins_bp
+    from mqttui.routes.brokers import brokers_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(api_bp)
@@ -152,6 +155,7 @@ def create_app(config=None):
     app.register_blueprint(metrics_bp)
     app.register_blueprint(analytics_bp)
     app.register_blueprint(plugins_bp)
+    app.register_blueprint(brokers_bp)
 
     # Register auth blueprint and seed admin user
     from mqttui.auth import auth_bp, seed_admin_user

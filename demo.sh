@@ -1,16 +1,18 @@
 #!/bin/bash
 # =============================================================================
-# MQTTUI v2.0 Demo Script
-# Populates realistic MQTT data to test all features end-to-end
+# MQTTUI v2.1 Demo Script
+# Populates realistic MQTT data across multiple brokers to test all features
 # Usage: ./demo.sh
-# Requires: docker compose running (mosquitto + mqttui containers)
+# Requires: docker compose running (mosquitto + mosquitto2 + mqttui containers)
 # =============================================================================
 
 set -e
 
-BROKER_CONTAINER="mosquitto"
+BROKER1="mosquitto"
+BROKER2="mosquitto2"
 API_URL="http://localhost:8088/api/v1"
-PUB="docker exec $BROKER_CONTAINER mosquitto_pub"
+PUB1="docker exec $BROKER1 mosquitto_pub"
+PUB2="docker exec $BROKER2 mosquitto_pub"
 
 # Colors
 GREEN='\033[0;32m'
@@ -19,20 +21,22 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE} MQTTUI v2.0 Demo Data Generator${NC}"
+echo -e "${BLUE} MQTTUI v2.1 Demo Data Generator (Multi-Broker)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
 # Check containers are running
-if ! docker ps --format '{{.Names}}' | grep -q "$BROKER_CONTAINER"; then
-    echo "Error: $BROKER_CONTAINER container not running. Run: docker compose up -d"
-    exit 1
-fi
+for c in $BROKER1 $BROKER2 mqttui; do
+    if ! docker ps --format '{{.Names}}' | grep -q "^${c}$"; then
+        echo "Error: $c container not running. Run: docker compose up -d"
+        exit 1
+    fi
+done
 
 # ---------------------------------------------------------------------------
 # 1. Login and get session cookie
 # ---------------------------------------------------------------------------
-echo -e "${YELLOW}[1/7] Authenticating...${NC}"
+echo -e "${YELLOW}[1/8] Authenticating...${NC}"
 COOKIE_JAR="/tmp/mqttui-demo-cookies.txt"
 LOGIN_RESP=$(curl -s -c "$COOKIE_JAR" -X POST "http://localhost:8088/login" \
     -d "username=admin&password=admin" \
@@ -45,186 +49,276 @@ fi
 echo -e "  ${GREEN}✓ Logged in as admin${NC}"
 
 # ---------------------------------------------------------------------------
-# 2. Publish varied MQTT messages (tests Dashboard, Message Flow, Analytics)
+# 2. Set up second broker connection
 # ---------------------------------------------------------------------------
-echo -e "${YELLOW}[2/7] Publishing 200 MQTT messages across 5 device types...${NC}"
+echo -e "${YELLOW}[2/8] Setting up second broker...${NC}"
 
-# Temperature sensors (numeric, good for histograms)
-for i in $(seq 1 50); do
+# Check if Broker 2 already exists
+EXISTING=$(curl -s -b "$COOKIE_JAR" "$API_URL/brokers/" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+brokers = (d.get('data') or d).get('brokers',[])
+print(len([b for b in brokers if b.get('host') == '$BROKER2']))
+" 2>/dev/null)
+
+if [ "$EXISTING" = "0" ]; then
+    curl -s -b "$COOKIE_JAR" -X POST "$API_URL/brokers/" \
+        -H "Content-Type: application/json" \
+        -d "{
+            \"name\": \"Warehouse\",
+            \"host\": \"$BROKER2\",
+            \"port\": 1883,
+            \"topics\": \"#\",
+            \"is_active\": true
+        }" > /dev/null
+    echo -e "  ${GREEN}✓ Added 'Warehouse' broker ($BROKER2:1883)${NC}"
+    sleep 2  # Wait for connection
+else
+    echo -e "  ${GREEN}✓ Second broker already exists${NC}"
+fi
+
+BROKER_COUNT=$(curl -s -b "$COOKIE_JAR" "$API_URL/brokers/" | python3 -c "
+import sys,json; d=json.load(sys.stdin)
+brokers = (d.get('data') or d).get('brokers',[])
+connected = sum(1 for b in brokers if b.get('connected'))
+print(f'{connected}/{len(brokers)} connected')
+" 2>/dev/null)
+echo -e "  Brokers: ${GREEN}$BROKER_COUNT${NC}"
+
+# ---------------------------------------------------------------------------
+# 3. Publish to Broker 1 — Home automation sensors
+# ---------------------------------------------------------------------------
+echo -e "${YELLOW}[3/8] Publishing to Broker 1 (Default) — Home sensors...${NC}"
+
+# Temperature sensors
+for i in $(seq 1 40); do
     temp=$(echo "scale=1; 18 + ($RANDOM % 200) / 10" | bc)
-    $PUB -t "sensors/living-room/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"device\": \"DHT22\"}"
-    $PUB -t "sensors/bedroom/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"device\": \"DHT22\"}"
+    $PUB1 -t "home/living-room/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"device\": \"DHT22\"}"
+    $PUB1 -t "home/bedroom/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"device\": \"DHT22\"}"
 done
-echo -e "  ${GREEN}✓ 100 temperature readings (18-38°C range)${NC}"
+echo -e "  ${GREEN}✓ 80 temperature readings${NC}"
 
-# Humidity sensors
-for i in $(seq 1 30); do
+# Humidity
+for i in $(seq 1 20); do
     humidity=$((40 + RANDOM % 40))
-    $PUB -t "sensors/living-room/humidity" -m "{\"value\": $humidity, \"unit\": \"%\", \"device\": \"DHT22\"}"
+    $PUB1 -t "home/living-room/humidity" -m "{\"value\": $humidity, \"unit\": \"%\"}"
 done
-echo -e "  ${GREEN}✓ 30 humidity readings${NC}"
+echo -e "  ${GREEN}✓ 20 humidity readings${NC}"
 
-# Motion sensors (binary events)
-for i in $(seq 1 20); do
+# Motion sensors
+for i in $(seq 1 15); do
     room=$(echo "hallway kitchen garage front-door" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
-    $PUB -t "sensors/$room/motion" -m "{\"detected\": true, \"confidence\": $((70 + RANDOM % 30))}"
+    $PUB1 -t "home/$room/motion" -m "{\"detected\": true, \"confidence\": $((70 + RANDOM % 30))}"
 done
-echo -e "  ${GREEN}✓ 20 motion events${NC}"
+echo -e "  ${GREEN}✓ 15 motion events${NC}"
 
-# Battery levels (good for threshold alerting)
-for i in $(seq 1 20); do
+# Battery levels
+for i in $(seq 1 10); do
     device=$(echo "thermostat doorbell smoke-detector leak-sensor" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     battery=$((5 + RANDOM % 95))
-    $PUB -t "devices/$device/battery" -m "{\"level\": $battery, \"charging\": false}"
+    $PUB1 -t "home/$device/battery" -m "{\"level\": $battery, \"charging\": false}"
 done
-echo -e "  ${GREEN}✓ 20 battery readings${NC}"
+echo -e "  ${GREEN}✓ 10 battery levels${NC}"
 
-# System status messages (retained)
-$PUB -t "system/mqttui/status" -m '{"status": "online", "version": "2.0.0"}' -r
-$PUB -t "system/broker/status" -m '{"status": "online", "clients": 5}' -r
-echo -e "  ${GREEN}✓ 2 retained status messages${NC}"
+# Retained status
+$PUB1 -t "system/home/status" -m '{"status": "online", "version": "2.1.0"}' -r
+echo -e "  ${GREEN}✓ 1 retained status message${NC}"
 
-# Home automation commands
-for i in $(seq 1 28); do
-    device=$(echo "light-1 light-2 fan ac heater" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
-    state=$(echo "on off" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
-    $PUB -t "home/$device/command" -m "{\"state\": \"$state\", \"source\": \"automation\"}"
-done
-echo -e "  ${GREEN}✓ 28 home automation commands${NC}"
-
-echo -e "  ${GREEN}Total: 200 messages across 15+ topics${NC}"
+echo -e "  ${GREEN}Broker 1 total: 126 messages${NC}"
 
 # ---------------------------------------------------------------------------
-# 3. Create automation rules (tests Rules tab)
+# 4. Publish to Broker 2 — Warehouse / industrial sensors
 # ---------------------------------------------------------------------------
-echo -e "${YELLOW}[3/7] Creating automation rules...${NC}"
+echo -e "${YELLOW}[4/8] Publishing to Broker 2 (Warehouse) — Industrial sensors...${NC}"
 
-# Rule 1: High temperature alert (publish action)
+# Warehouse temperature (cold storage monitoring)
+for i in $(seq 1 40); do
+    temp=$(echo "scale=1; -5 + ($RANDOM % 150) / 10" | bc)
+    zone=$(echo "zone-A zone-B zone-C" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    $PUB2 -t "warehouse/$zone/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"sensor\": \"PT100\"}"
+done
+echo -e "  ${GREEN}✓ 40 cold storage temperature readings${NC}"
+
+# Conveyor belt speed
+for i in $(seq 1 20); do
+    line=$(echo "line-1 line-2 line-3" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    speed=$(echo "scale=1; 1 + ($RANDOM % 50) / 10" | bc)
+    $PUB2 -t "warehouse/$line/conveyor/speed" -m "{\"value\": $speed, \"unit\": \"m/s\"}"
+done
+echo -e "  ${GREEN}✓ 20 conveyor speed readings${NC}"
+
+# Door access events
+for i in $(seq 1 15); do
+    door=$(echo "main loading-dock office emergency" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    action=$(echo "opened closed" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    $PUB2 -t "warehouse/doors/$door" -m "{\"action\": \"$action\", \"badge_id\": \"EMP-$((100 + RANDOM % 900))\"}"
+done
+echo -e "  ${GREEN}✓ 15 door access events${NC}"
+
+# Power meters
+for i in $(seq 1 10); do
+    meter=$(echo "main-panel hvac compressor lighting" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    watts=$((500 + RANDOM % 9500))
+    $PUB2 -t "warehouse/power/$meter" -m "{\"watts\": $watts, \"voltage\": 240}"
+done
+echo -e "  ${GREEN}✓ 10 power meter readings${NC}"
+
+# Retained status
+$PUB2 -t "system/warehouse/status" -m '{"status": "online", "zones": 3, "conveyors": 3}' -r
+echo -e "  ${GREEN}✓ 1 retained status message${NC}"
+
+echo -e "  ${GREEN}Broker 2 total: 86 messages${NC}"
+
+# ---------------------------------------------------------------------------
+# 5. Create automation rules (spanning both brokers)
+# ---------------------------------------------------------------------------
+echo -e "${YELLOW}[5/8] Creating automation rules...${NC}"
+
+# Rule 1: High temperature alert (home)
 curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/" \
     -H "Content-Type: application/json" \
     -d '{
-        "name": "High Temperature Alert",
-        "description": "Publish alert when any temperature exceeds 35°C",
-        "trigger_topic": "sensors/+/temperature",
+        "name": "Home High Temp Alert",
+        "description": "Alert when home temperature exceeds 35°C",
+        "trigger_topic": "home/+/temperature",
         "condition": {"path": "value", "op": "gt", "value": 35},
-        "action": {"type": "publish", "topic": "alerts/high-temp", "payload": "{\"alert\": \"Temperature exceeded 35°C\"}"},
+        "action": {"type": "publish", "topic": "alerts/high-temp", "payload": "{\"alert\": \"Home temperature exceeded 35°C\"}"},
         "rate_limit_per_min": 5
     }' > /dev/null
-echo -e "  ${GREEN}✓ High Temperature Alert (publish to alerts/high-temp when > 35°C)${NC}"
+echo -e "  ${GREEN}✓ Home High Temp Alert${NC}"
 
-# Rule 2: Low battery warning (log action)
+# Rule 2: Cold storage warning (warehouse — temp too high for cold storage)
+curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "Cold Storage Warning",
+        "description": "Alert when warehouse temp rises above 5°C",
+        "trigger_topic": "warehouse/+/temperature",
+        "condition": {"path": "value", "op": "gt", "value": 5},
+        "action": {"type": "log", "severity": "critical", "message": "Cold storage temperature exceeded threshold"},
+        "rate_limit_per_min": 10
+    }' > /dev/null
+echo -e "  ${GREEN}✓ Cold Storage Warning (warehouse temp > 5°C)${NC}"
+
+# Rule 3: Low battery warning
 curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/" \
     -H "Content-Type: application/json" \
     -d '{
         "name": "Low Battery Warning",
         "description": "Log when any device battery drops below 20%",
-        "trigger_topic": "devices/+/battery",
+        "trigger_topic": "home/+/battery",
         "condition": {"path": "level", "op": "lt", "value": 20},
         "action": {"type": "log", "severity": "warning", "message": "Low battery detected"},
         "rate_limit_per_min": 10
     }' > /dev/null
-echo -e "  ${GREEN}✓ Low Battery Warning (log when battery < 20%)${NC}"
+echo -e "  ${GREEN}✓ Low Battery Warning${NC}"
 
-# Rule 3: Motion logger (log action, no condition)
+# Rule 4: Emergency door monitor (warehouse)
+curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "name": "Emergency Door Monitor",
+        "description": "Log when emergency door is opened",
+        "trigger_topic": "warehouse/doors/emergency",
+        "condition": {"path": "action", "op": "eq", "value": "opened"},
+        "action": {"type": "log", "severity": "critical", "message": "Emergency door opened!"},
+        "rate_limit_per_min": 30
+    }' > /dev/null
+echo -e "  ${GREEN}✓ Emergency Door Monitor${NC}"
+
+# Rule 5: Motion logger
 curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/" \
     -H "Content-Type: application/json" \
     -d '{
         "name": "Motion Event Logger",
         "description": "Log all motion detection events",
-        "trigger_topic": "sensors/+/motion",
+        "trigger_topic": "home/+/motion",
         "condition": {},
         "action": {"type": "log", "severity": "info", "message": "Motion detected"},
         "rate_limit_per_min": 30
     }' > /dev/null
-echo -e "  ${GREEN}✓ Motion Event Logger (log all motion events)${NC}"
-
-# Rule 4: Wildcard monitor (disabled by default)
-RULE4_RESP=$(curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/" \
-    -H "Content-Type: application/json" \
-    -d '{
-        "name": "All Messages Monitor",
-        "description": "Monitor everything (disabled - enable for debugging)",
-        "trigger_topic": "#",
-        "condition": {},
-        "action": {"type": "log", "severity": "info", "message": "Message received"},
-        "rate_limit_per_min": 60
-    }')
-RULE4_ID=$(echo "$RULE4_RESP" | python3 -c "import sys,json; print(json.load(sys.stdin).get('data',{}).get('id',''))" 2>/dev/null)
-if [ -n "$RULE4_ID" ]; then
-    curl -s -b "$COOKIE_JAR" -X POST "$API_URL/rules/$RULE4_ID/disable" > /dev/null
-fi
-echo -e "  ${GREEN}✓ All Messages Monitor (disabled — for debugging)${NC}"
+echo -e "  ${GREEN}✓ Motion Event Logger${NC}"
 
 # ---------------------------------------------------------------------------
-# 4. Trigger rules with matching messages (tests Alerts tab)
+# 6. Trigger rules with matching messages
 # ---------------------------------------------------------------------------
-echo -e "${YELLOW}[4/7] Triggering rules with matching messages...${NC}"
+echo -e "${YELLOW}[6/8] Triggering rules with matching messages...${NC}"
 
-# Trigger high temp alert
+# Trigger home high temp
 for i in $(seq 1 5); do
     temp=$(echo "scale=1; 36 + ($RANDOM % 50) / 10" | bc)
-    $PUB -t "sensors/living-room/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"device\": \"DHT22\"}"
+    $PUB1 -t "home/living-room/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"device\": \"DHT22\"}"
     sleep 0.3
 done
-echo -e "  ${GREEN}✓ 5 high-temp messages (should trigger alerts)${NC}"
+echo -e "  ${GREEN}✓ 5 high-temp messages on Broker 1${NC}"
+
+# Trigger cold storage warnings
+for i in $(seq 1 5); do
+    temp=$(echo "scale=1; 6 + ($RANDOM % 40) / 10" | bc)
+    zone=$(echo "zone-A zone-B zone-C" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
+    $PUB2 -t "warehouse/$zone/temperature" -m "{\"value\": $temp, \"unit\": \"C\", \"sensor\": \"PT100\"}"
+    sleep 0.3
+done
+echo -e "  ${GREEN}✓ 5 cold storage warnings on Broker 2${NC}"
 
 # Trigger low battery
 for i in $(seq 1 3); do
     device=$(echo "thermostat doorbell smoke-detector" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
     battery=$((3 + RANDOM % 15))
-    $PUB -t "devices/$device/battery" -m "{\"level\": $battery, \"charging\": false}"
+    $PUB1 -t "home/$device/battery" -m "{\"level\": $battery, \"charging\": false}"
     sleep 0.3
 done
-echo -e "  ${GREEN}✓ 3 low-battery messages (should trigger warnings)${NC}"
+echo -e "  ${GREEN}✓ 3 low-battery messages${NC}"
 
-# Trigger motion
-for i in $(seq 1 5); do
-    room=$(echo "hallway kitchen garage" | tr ' ' '\n' | sort -R 2>/dev/null | head -1 || awk 'BEGIN{srand()}{a[NR]=$0}END{print a[int(rand()*NR)+1]}')
-    $PUB -t "sensors/$room/motion" -m "{\"detected\": true, \"confidence\": $((80 + RANDOM % 20))}"
-    sleep 0.2
-done
-echo -e "  ${GREEN}✓ 5 motion events (should be logged)${NC}"
+# Trigger emergency door
+$PUB2 -t "warehouse/doors/emergency" -m '{"action": "opened", "badge_id": "EMP-999"}'
+echo -e "  ${GREEN}✓ 1 emergency door event on Broker 2${NC}"
 
-# Wait for rules to process
 sleep 3
 
 # ---------------------------------------------------------------------------
-# 5. Create filter presets (tests Advanced Search)
+# 7. Create filter presets + bookmarks
 # ---------------------------------------------------------------------------
-echo -e "${YELLOW}[5/7] Creating filter presets...${NC}"
+echo -e "${YELLOW}[7/8] Creating filter presets and bookmarks...${NC}"
 
 curl -s -b "$COOKIE_JAR" -X POST "$API_URL/filter-presets" \
     -H "Content-Type: application/json" \
-    -d '{"name": "Temperature Only", "description": "All temperature sensors", "filters": {"regex_topic": "sensors/.*/temperature"}}' > /dev/null
-echo -e "  ${GREEN}✓ 'Temperature Only' preset${NC}"
+    -d '{"name": "Home Sensors", "description": "All home sensor data", "filters": {"regex_topic": "home/.*"}}' > /dev/null
+echo -e "  ${GREEN}✓ 'Home Sensors' preset${NC}"
 
 curl -s -b "$COOKIE_JAR" -X POST "$API_URL/filter-presets" \
     -H "Content-Type: application/json" \
-    -d '{"name": "Alerts & Warnings", "description": "Alert topics only", "filters": {"regex_topic": "alerts/.*"}}' > /dev/null
-echo -e "  ${GREEN}✓ 'Alerts & Warnings' preset${NC}"
+    -d '{"name": "Warehouse Only", "description": "All warehouse data", "filters": {"regex_topic": "warehouse/.*"}}' > /dev/null
+echo -e "  ${GREEN}✓ 'Warehouse Only' preset${NC}"
 
 curl -s -b "$COOKIE_JAR" -X POST "$API_URL/filter-presets" \
     -H "Content-Type: application/json" \
-    -d '{"name": "Low Battery Devices", "description": "Battery below 30%", "filters": {"regex_topic": "devices/.*/battery", "json_path": "level", "json_value": "30"}}' > /dev/null
-echo -e "  ${GREEN}✓ 'Low Battery Devices' preset${NC}"
+    -d '{"name": "Alerts", "description": "Alert topics only", "filters": {"regex_topic": "alerts/.*"}}' > /dev/null
+echo -e "  ${GREEN}✓ 'Alerts' preset${NC}"
 
-# ---------------------------------------------------------------------------
-# 6. Bookmark favorite topics (tests Topic Favorites)
-# ---------------------------------------------------------------------------
-echo -e "${YELLOW}[6/7] Bookmarking favorite topics...${NC}"
-
-for topic in "sensors/living-room/temperature" "sensors/bedroom/temperature" "devices/thermostat/battery"; do
+for topic in "home/living-room/temperature" "warehouse/zone-A/temperature" "warehouse/doors/emergency"; do
     curl -s -b "$COOKIE_JAR" -X POST "$API_URL/topics/$(echo $topic | sed 's/\//%2F/g')/bookmark" > /dev/null 2>&1
     echo -e "  ${GREEN}✓ Bookmarked: $topic${NC}"
 done
 
 # ---------------------------------------------------------------------------
-# 7. Verify data via API
+# 8. Verify data via API
 # ---------------------------------------------------------------------------
-echo -e "${YELLOW}[7/7] Verifying data via API...${NC}"
+echo -e "${YELLOW}[8/8] Verifying data via API...${NC}"
 
 MSG_COUNT=$(curl -s -b "$COOKIE_JAR" "$API_URL/messages?limit=1" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',d).get('total',0))" 2>/dev/null)
 echo -e "  Messages stored: ${GREEN}$MSG_COUNT${NC}"
+
+BROKER_STATUS=$(curl -s -b "$COOKIE_JAR" "$API_URL/brokers/" | python3 -c "
+import sys,json
+d=json.load(sys.stdin)
+brokers = (d.get('data') or d).get('brokers',[])
+for b in brokers:
+    status = '✓ Connected' if b.get('connected') else '✗ Disconnected'
+    print(f\"    {b['name']} ({b['host']}:{b['port']}): {status}\")
+" 2>/dev/null)
+echo -e "  Brokers:"
+echo -e "${GREEN}$BROKER_STATUS${NC}"
 
 RULE_COUNT=$(curl -s -b "$COOKIE_JAR" "$API_URL/rules/" | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d.get('data',d).get('rules',[])))" 2>/dev/null)
 echo -e "  Rules created: ${GREEN}$RULE_COUNT${NC}"
@@ -247,42 +341,33 @@ echo -e "${GREEN}$ANALYTICS${NC}"
 # ---------------------------------------------------------------------------
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${BLUE} Demo Data Ready!${NC}"
+echo -e "${BLUE} Demo Data Ready! (Multi-Broker)${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo -e "Open ${GREEN}http://localhost:8088${NC} and check:"
 echo ""
 echo -e "  ${YELLOW}Dashboard${NC}"
-echo "    - Message list with 200+ messages"
-echo "    - Topic graph with 15+ nodes"
-echo "    - Message rate chart updating"
-echo "    - Retained messages marked with 'R' badge"
-echo "    - Bookmarked topics starred in dropdown"
+echo "    - Messages from BOTH brokers (look for broker name badges)"
+echo "    - Topic graph with home/* and warehouse/* nodes"
+echo "    - Use Broker dropdown in Advanced Search to filter by broker"
+echo "    - Use ★ Favorites Only to see bookmarked topics"
+echo ""
+echo -e "  ${YELLOW}Brokers${NC}"
+echo "    - Default (mosquitto) — home automation sensors"
+echo "    - Warehouse (mosquitto2) — industrial sensors"
+echo "    - Both should show 'Connected' with green indicator"
 echo ""
 echo -e "  ${YELLOW}Rules${NC}"
-echo "    - 4 rules (3 active, 1 disabled)"
-echo "    - Click Edit to see pre-filled form"
-echo "    - Click Test for dry-run against sample payload"
-echo "    - High Temp rule should show fire count > 0"
+echo "    - 5 rules spanning both brokers"
+echo "    - Home High Temp + Cold Storage + Low Battery + Emergency Door + Motion"
 echo ""
 echo -e "  ${YELLOW}Alerts${NC}"
-echo "    - Alert history from rule firings"
-echo "    - Filter by rule or severity"
+echo "    - Alerts from rules on both brokers"
+echo "    - Filter by rule to see per-broker alerts"
 echo ""
 echo -e "  ${YELLOW}Analytics${NC}"
-echo "    - Per-topic message rates"
-echo "    - Payload histograms (temperature values)"
-echo "    - Top topics by activity"
-echo ""
-echo -e "  ${YELLOW}Plugins${NC}"
-echo "    - JSON Formatter and Topic Logger listed"
-echo "    - Enable/disable toggles"
-echo ""
-echo -e "  ${YELLOW}Other${NC}"
-echo "    - Debug bar (blue button, bottom-right)"
-echo "    - API docs: http://localhost:8088/api/v1/docs"
-echo "    - Prometheus: http://localhost:8088/metrics"
+echo "    - Topics from both brokers in the same view"
+echo "    - Temperature histograms for home AND warehouse"
 echo ""
 
-# Cleanup
 rm -f "$COOKIE_JAR"

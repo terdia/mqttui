@@ -8,6 +8,14 @@ services:
     volumes:
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
 
+  mosquitto2:
+    image: eclipse-mosquitto:latest
+    container_name: mosquitto2
+    ports:
+      - "1884:1883"
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
   web:
     container_name: mqttui
     build: .

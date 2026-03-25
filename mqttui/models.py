@@ -46,3 +46,39 @@ class TopicFavorite(sa.Model):
             'topic': self.topic,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class Broker(sa.Model):
+    __tablename__ = 'brokers'
+
+    id = sa.Column(sa.Integer, primary_key=True)
+    name = sa.Column(sa.String(200), nullable=False)
+    host = sa.Column(sa.String(500), nullable=False)
+    port = sa.Column(sa.Integer, default=1883)
+    username = sa.Column(sa.String(200), nullable=True)
+    password = sa.Column(sa.String(200), nullable=True)
+    mqtt_version = sa.Column(sa.String(10), default='3.1.1')
+    topics = sa.Column(sa.String(1000), default='#')
+    tls_enabled = sa.Column(sa.Boolean, default=False)
+    tls_ca_certs = sa.Column(sa.String(500), nullable=True)
+    tls_insecure = sa.Column(sa.Boolean, default=False)
+    is_active = sa.Column(sa.Boolean, default=True)
+    is_default = sa.Column(sa.Boolean, default=False)
+    created_at = sa.Column(sa.DateTime, server_default=sa.func.now())
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'host': self.host,
+            'port': self.port,
+            'username': self.username,
+            'has_password': bool(self.password),
+            'mqtt_version': self.mqtt_version,
+            'topics': self.topics,
+            'tls_enabled': self.tls_enabled,
+            'tls_insecure': self.tls_insecure,
+            'is_active': self.is_active,
+            'is_default': self.is_default,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

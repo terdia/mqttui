@@ -25,6 +25,19 @@
                     </div>
                     <div x-show="searchOpen" x-transition>
 
+                    <!-- Broker Filter -->
+                    <div class="mb-4" x-data="{ brokers: [] }" x-init="
+                        fetch('/api/v1/brokers/').then(r => { if (r.ok && (r.headers.get('content-type')||'').includes('json')) return r.json(); }).then(d => { if (d) brokers = (d.data||d).brokers || [] })
+                    ">
+                        <label class="block text-sm font-medium mb-2">Broker</label>
+                        <select id="broker-filter" class="block w-full rounded-md bg-gray-700 border-gray-600 text-white">
+                            <option value="all">All Brokers</option>
+                            <template x-for="b in brokers" :key="b.id">
+                                <option :value="b.id" x-text="b.name + ' (' + b.host + ')'"></option>
+                            </template>
+                        </select>
+                    </div>
+
                     <!-- Basic Topic Filter -->
                     <div class="mb-4">
                         <label class="block text-sm font-medium mb-2">Topic Filter</label>
@@ -155,6 +168,11 @@
                         class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
                     Plugins
                 </button>
+                <button @click="activeTab = 'brokers'; if (!brokersLoaded) { brokersLoaded = true; }"
+                        :class="activeTab === 'brokers' ? 'border-blue-500 text-blue-400' : 'border-transparent text-gray-400 hover:text-gray-200'"
+                        class="px-4 py-2 text-sm font-medium border-b-2 transition-colors">
+                    Brokers
+                </button>
             </div>
 
             <!-- Dashboard Tab -->
@@ -188,6 +206,9 @@
                                 <div class="flex justify-between items-start mb-2">
                                     <div class="flex items-center gap-2">
                                         <span class="text-blue-400 font-medium" x-text="msg.topic"></span>
+                                        <span x-show="msg.broker_name"
+                                              class="px-1.5 py-0.5 text-xs bg-gray-600 text-gray-300 rounded"
+                                              x-text="msg.broker_name"></span>
                                         <span x-show="msg.retain"
                                               class="px-1.5 py-0.5 text-xs font-bold bg-amber-600 text-white rounded"
                                               title="Retained message">R</span>
@@ -236,6 +257,13 @@
             <div x-show="activeTab === 'plugins'" class="flex-1 flex flex-col overflow-hidden p-4">
                 <div id="plugins-panel" class="flex-1 overflow-y-auto">
                     <div class="text-center p-4 text-gray-400">Loading plugins...</div>
+                </div>
+            </div>
+
+            <!-- Brokers Tab -->
+            <div x-show="activeTab === 'brokers'" class="flex-1 flex flex-col overflow-hidden p-4">
+                <div id="brokers-panel" class="flex-1 overflow-y-auto">
+                    {% include 'partials/brokers.html' %}
                 </div>
             </div>
         </div>

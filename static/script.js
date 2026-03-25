@@ -29,6 +29,7 @@ function mqttuiApp() {
         rulesLoaded: false,
         analyticsLoaded: false,
         pluginsLoaded: false,
+        brokersLoaded: false,
         init() {
             // Initialize Chart.js and Vis.js network
             initChart();
@@ -90,8 +91,12 @@ function messageListComponent() {
             this.loadFavorites();
             window.addEventListener('mqtt-message', (e) => {
                 const msg = e.detail;
-                const filter = Alpine.store('mqtt').selectedTopic;
-                if (filter === 'all' || msg.topic === filter) {
+                const topicFilter = Alpine.store('mqtt').selectedTopic;
+                const brokerEl = document.getElementById('broker-filter');
+                const brokerFilter = brokerEl ? brokerEl.value : 'all';
+                const topicMatch = topicFilter === 'all' || msg.topic === topicFilter;
+                const brokerMatch = brokerFilter === 'all' || String(msg.broker_id) === brokerFilter;
+                if (topicMatch && brokerMatch) {
                     this.messages.unshift(msg);
                     if (this.messages.length > 100) this.messages.pop();
                 }
@@ -848,15 +853,32 @@ function closeDebugBar() {
 }
 
 function trackClientPerformance() {
-    const perfData = window.performance.timing;
-    const pageLoadTime = perfData.loadEventEnd - perfData.navigationStart;
-    const domReadyTime = perfData.domContentLoadedEventEnd - perfData.navigationStart;
+    // Delay to ensure timing data is available after full page load
+    setTimeout(() => {
+        let pageLoadTime = 0;
+        let domReadyTime = 0;
 
-    fetch('/record-client-performance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageLoadTime, domReadyTime }),
-    });
+        // Prefer modern Navigation Timing API
+        const entries = performance.getEntriesByType('navigation');
+        if (entries.length > 0) {
+            const nav = entries[0];
+            pageLoadTime = Math.round(nav.loadEventEnd);
+            domReadyTime = Math.round(nav.domContentLoadedEventEnd);
+        } else if (performance.timing) {
+            // Fallback to deprecated API
+            const t = performance.timing;
+            pageLoadTime = t.loadEventEnd - t.navigationStart;
+            domReadyTime = t.domContentLoadedEventEnd - t.navigationStart;
+        }
+
+        if (pageLoadTime > 0) {
+            fetch('/record-client-performance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pageLoadTime, domReadyTime }),
+            });
+        }
+    }, 2000);
 }
 
 function updateDebugBar() {
@@ -1010,6 +1032,70 @@ function dryRunComponent(ruleId) {
             } catch (e) {
                 this.error = 'Network error: ' + e.message;
             }
+        },
+    };
+}
+
+// ============================================================
+// Broker management component
+// ============================================================
+function brokersComponent() {
+    return {
+        brokers: [],
+        showForm: false,
+        editId: null,
+        error: '',
+        form: { name: '', host: '', port: 1883, username: '', password: '', mqtt_version: '3.1.1', topics: '#', tls_enabled: false, tls_insecure: false },
+        async loadBrokers() {
+            try {
+                const resp = await fetch('/api/v1/brokers/');
+                if (resp.redirected || !resp.ok) return; // Not logged in or error
+                const ct = resp.headers.get('content-type') || '';
+                if (!ct.includes('json')) return; // Got HTML redirect
+                const data = await resp.json();
+                this.brokers = (data.data || data).brokers || [];
+            } catch (e) { console.error('Error loading brokers:', e); }
+        },
+        resetForm() {
+            this.form = { name: '', host: '', port: 1883, username: '', password: '', mqtt_version: '3.1.1', topics: '#', tls_enabled: false, tls_insecure: false };
+            this.editId = null;
+            this.showForm = false;
+            this.error = '';
+        },
+        editBroker(broker) {
+            this.form = { name: broker.name, host: broker.host, port: broker.port, username: broker.username || '', password: '', mqtt_version: broker.mqtt_version, topics: broker.topics, tls_enabled: broker.tls_enabled, tls_insecure: broker.tls_insecure };
+            this.editId = broker.id;
+            this.showForm = true;
+        },
+        async saveBroker() {
+            this.error = '';
+            const url = this.editId ? `/api/v1/brokers/${this.editId}` : '/api/v1/brokers/';
+            const method = this.editId ? 'PUT' : 'POST';
+            try {
+                const resp = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.form) });
+                if (!resp.ok && resp.status !== 201) { this.error = `Server error (${resp.status})`; return; }
+                const data = await resp.json();
+                if (data.status === 'success') {
+                    this.resetForm();
+                    await this.loadBrokers();
+                } else {
+                    this.error = data.error?.message || 'Failed to save broker';
+                }
+            } catch (e) { this.error = 'Network error: ' + e.message; }
+        },
+        async deleteBroker(id) {
+            try {
+                await fetch(`/api/v1/brokers/${id}`, { method: 'DELETE' });
+                await this.loadBrokers();
+            } catch (e) { console.error('Error deleting broker:', e); }
+        },
+        async connectBroker(id) {
+            await fetch(`/api/v1/brokers/${id}/connect`, { method: 'POST' });
+            setTimeout(() => this.loadBrokers(), 1500);
+        },
+        async disconnectBroker(id) {
+            await fetch(`/api/v1/brokers/${id}/disconnect`, { method: 'POST' });
+            await this.loadBrokers();
         },
     };
 }

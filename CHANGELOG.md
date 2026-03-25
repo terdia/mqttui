@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-03-24
+
+### Added
+- **Multi-broker support**: Connect to multiple MQTT brokers simultaneously from the Brokers tab
+- **Broker management API**: Full CRUD at `/api/v1/brokers/` with connect/disconnect endpoints
+- **Broker management UI**: Add, edit, remove, connect, disconnect brokers with live status indicators
+- **Broker filtering**: Filter messages by source broker in Advanced Search dropdown
+- **Broker name badges**: Each message shows which broker it came from
+- **Demo script updated**: `./demo.sh` populates both brokers with different data profiles (home vs warehouse)
+- **Backward compatible**: Existing env var config auto-seeds a "Default" broker on first run
+
+### Fixed
+- Debug bar performance tab now uses modern Performance API (deprecated `window.performance.timing` replaced)
+
 ## [2.0.0] - 2026-03-24
 
 ### Added
